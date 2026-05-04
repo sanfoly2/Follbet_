@@ -23,10 +23,18 @@ router.post("/register", async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = {
-      id: Date.now().toString(),
+      id: Math.floor(100000 + Math.random() * 900000).toString(),
       email,
       password: hashedPassword,
-      balance: 1000, // Initial balance
+      balance: 0, 
+      wageredAmount: 0,
+      vipLevel: 1,
+      pixKey: "",
+      referralCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
+      referredBy: req.body.ref || null,
+      referralCount: 0,
+      rolloverTotal: 0,
+      rolloverCurrent: 0,
       history: []
     };
 
@@ -39,6 +47,11 @@ router.post("/register", async (req, res) => {
       id: newUser.id,
       email: newUser.email,
       balance: newUser.balance,
+      wageredAmount: newUser.wageredAmount,
+      vipLevel: newUser.vipLevel,
+      referralCode: newUser.referralCode,
+      rolloverTotal: newUser.rolloverTotal,
+      rolloverCurrent: newUser.rolloverCurrent,
       history: newUser.history
     });
   } catch (error) {
@@ -67,6 +80,11 @@ router.post("/login", async (req, res) => {
       id: user.id,
       email: user.email,
       balance: user.balance,
+      wageredAmount: user.wageredAmount,
+      vipLevel: user.vipLevel,
+      referralCode: user.referralCode,
+      rolloverTotal: user.rolloverTotal,
+      rolloverCurrent: user.rolloverCurrent,
       history: user.history
     });
   } catch (error) {
@@ -87,11 +105,35 @@ router.get("/user", (req, res) => {
       id: user.id,
       email: user.email,
       balance: user.balance,
+      wageredAmount: user.wageredAmount,
+      vipLevel: user.vipLevel,
+      pixKey: user.pixKey,
+      referralCode: user.referralCode,
+      rolloverTotal: user.rolloverTotal,
+      rolloverCurrent: user.rolloverCurrent,
       history: user.history
     });
   } catch (error) {
     res.status(401).json({ error: "Token inválido" });
   }
+});
+
+router.post("/update-profile", (req, res) => {
+    const token = req.cookies.token;
+    if (!token) return res.status(401).json({ error: "Não autenticado" });
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        const user = users.find(u => u.id === decoded.userId);
+        if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
+
+        const { pixKey } = req.body;
+        if (pixKey !== undefined) user.pixKey = pixKey;
+
+        res.json({ message: "Perfil atualizado", pixKey: user.pixKey });
+    } catch (error) {
+        res.status(401).json({ error: "Token inválido" });
+    }
 });
 
 router.post("/logout", (req, res) => {

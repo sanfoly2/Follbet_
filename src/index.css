@@ -5,12 +5,15 @@
   --color-neon-blue: #00f3ff;
   --color-neon-purple: #bc13fe;
   --color-neon-pink: #ff00ff;
+  --color-neon-yellow: #f4ea13;
+  --color-neon-green: #39ff14;
   --color-dark-bg: #0a0a0c;
+  --color-card-bg: #1c1c21;
 }
 
 @layer base {
   body {
-    @apply bg-dark-bg text-white font-sans;
+    @apply bg-dark-bg text-white font-sans overflow-x-hidden;
   }
 }
 
@@ -27,6 +30,10 @@
     @apply text-neon-purple drop-shadow-[0_0_8px_rgba(188,19,254,0.6)];
   }
 
+  .neon-text-yellow {
+    @apply text-neon-yellow drop-shadow-[0_0_8px_rgba(244,234,19,0.6)];
+  }
+
   .neon-button-blue {
     @apply px-6 py-2 rounded-lg font-bold transition-all duration-300 active:scale-95 bg-transparent border-2 border-neon-blue text-neon-blue hover:bg-neon-blue hover:text-black hover:shadow-[0_0_20px_rgba(0,243,255,0.8)];
   }
@@ -35,8 +42,22 @@
     @apply px-6 py-2 rounded-lg font-bold transition-all duration-300 active:scale-95 bg-transparent border-2 border-neon-purple text-neon-purple hover:bg-neon-purple hover:text-black hover:shadow-[0_0_20px_rgba(188,19,254,0.8)];
   }
   
+  .neon-button-green {
+    @apply px-6 py-2 rounded-lg font-bold transition-all duration-300 active:scale-95 bg-neon-green text-black shadow-[0_0_15px_#39ff14] hover:shadow-[0_0_25px_#39ff14];
+  }
+
   .glass-card {
     @apply bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6;
+  }
+
+  .vertical-text {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+  }
+
+  .jackpot-gradient {
+    @apply bg-gradient-to-r from-orange-500 via-yellow-400 to-orange-500 bg-clip-text text-transparent font-black uppercase italic;
   }
 }
 
@@ -51,4 +72,12 @@
   to {
     text-shadow: 0 0 20px #00f3ff, 0 0 30px #bc13fe;
   }
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
