@@ -15,7 +15,7 @@ export const API_URL = "https://backend-pix-qub4.onrender.com";
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   // Ensure endpoint starts with a slash or is absolute
   const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-  const url = endpoint.startsWith('http') ? endpoint : `${API_URL}/api${path}`;
+  const url = endpoint.startsWith('http') ? endpoint : `${API_URL}${path}`;
 
   try {
     const response = await fetch(url, {

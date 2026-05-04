@@ -209,7 +209,7 @@ function DepositModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => voi
     setLoading(true);
     try {
       // Calling the Render backend to create PIX payment
-      const res = await apiFetch('/create-pix', {
+      const res = await apiFetch('/Pix', {
         method: 'POST',
         body: JSON.stringify({
           transaction_amount: amount,
@@ -282,7 +282,10 @@ function DepositModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => voi
                       className="bg-white/5 border border-white/10 p-4 rounded-xl font-bold hover:border-neon-green hover:bg-neon-green/10 transition-all flex flex-col items-center gap-1"
                     >
                       {loading ? (
-                        <div className="w-4 h-4 border-2 border-neon-green border-t-transparent rounded-full animate-spin" />
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-neon-green border-t-transparent rounded-full animate-spin" />
+                          <span className="text-[10px] text-neon-green uppercase animate-pulse">Carregando...</span>
+                        </div>
                       ) : (
                         <>
                           <span className="text-xs text-white/40 font-normal">Valor</span>
