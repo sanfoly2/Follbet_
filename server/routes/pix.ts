@@ -1,111 +1,82 @@
 import express from "express";
-import axios from "axios";
-import https from "https";
+import { MercadoPagoConfig, Payment } from 'mercadopago';
 import { users } from "./auth.js";
 import jwt from "jsonwebtoken";
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret";
 
-// Helper to get EFI Access Token
-async function getEFIToken() {
-  const credentials = Buffer.from(
-    `${process.env.EFI_CLIENT_ID}:${process.env.EFI_CLIENT_SECRET}`
-  ).toString("base64");
-
-  // EFI requires a certificate for PIX. 
-  // In production (Render), you should provide the certificate as a Base64 string in EFI_CERT_BASE64
-  const cert = process.env.EFI_CERT_BASE64 
-    ? Buffer.from(process.env.EFI_CERT_BASE64, "base64") 
-    : null;
-
-  const agent = new https.Agent({
-    pfx: cert || undefined,
-    passphrase: "", // Password for .p12 if any
-  });
-
-  const response = await axios({
-    method: "POST",
-    url: `${process.env.EFI_ENDPOINT}/oauth/token`,
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      "Content-Type": "application/json",
-    },
-    httpsAgent: agent,
-    data: { grant_type: "client_credentials" },
-  });
-
-  return response.data.access_token;
-}
+// Configuração do Mercado Pago
+// No Render, configure a variável de ambiente: MP_ACCESS_TOKEN
+const client = new MercadoPagoConfig({ 
+  accessToken: process.env.MP_ACCESS_TOKEN || '' 
+});
 
 router.post("/", async (req, res) => {
   try {
     const { amount } = req.body;
-    const token = req.cookies.token;
+    const token = req.cookies?.token;
 
-    if (!token) return res.status(401).json({ error: "Não autenticado" });
-    if (!amount || amount < 1) return res.status(400).json({ error: "Valor inválido" });
+    if (!token) {
+      return res.status(401).json({ error: "Sessão expirada. Faça login novamente." });
+    }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    if (!amount || Number(amount) < 1) {
+      return res.status(400).json({ error: "O valor mínimo para depósito é R$ 1,00" });
+    }
+
+    // Identifica o usuário pelo token
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ error: "Token inválido ou expirado" });
+    }
+
     const user = users.find(u => u.id === decoded.userId);
-    if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
+    if (!user) {
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
 
-    // 1. Get Token
-    const accessToken = await getEFIToken();
+    const payment = new Payment(client);
 
-    const cert = process.env.EFI_CERT_BASE64 
-      ? Buffer.from(process.env.EFI_CERT_BASE64, "base64") 
-      : null;
+    const paymentBody = {
+      transaction_amount: Number(amount),
+      description: 'Depósito em Foll Bet',
+      payment_method_id: 'pix',
+      payer: {
+        email: user.email,
+        // O Mercado Pago pode requerer nome se não for sandbox, mas para PIX o email costuma bastar
+        first_name: user.email.split('@')[0],
+      },
+      // Chave de idempotência para evitar duplicidade em retribuições rápidas
+      metadata: {
+        user_id: user.id
+      }
+    };
 
-    const agent = new https.Agent({
-      pfx: cert || undefined,
+    const result = await payment.create({ 
+      body: paymentBody,
+      requestOptions: { idempotencyKey: `pix-${user.id}-${Date.now()}` }
     });
 
-    // 2. Create Cob (Charge)
-    const cobResponse = await axios({
-      method: "POST",
-      url: `${process.env.EFI_ENDPOINT}/v2/cob`,
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      httpsAgent: agent,
-      data: {
-        calendario: {
-          expiracao: 3600,
-        },
-        valor: {
-          original: Number(amount).toFixed(2),
-        },
-        chave: process.env.EFI_PIX_KEY,
-        solicitacaoPagador: "Depósito Foll Bet",
-      },
-    });
-
-    const locId = cobResponse.data.loc.id;
-
-    // 3. Generate QR Code
-    const qrResponse = await axios({
-      method: "GET",
-      url: `${process.env.EFI_ENDPOINT}/v2/loc/${locId}/qrcode`,
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      httpsAgent: agent,
-    });
+    const transactionData = result.point_of_interaction?.transaction_data;
 
     res.json({
-      payment_id: cobResponse.data.txid,
-      qr_code: qrResponse.data.qrcode,
-      qr_code_base64: qrResponse.data.imagemQrcode,
-      amount: amount
+      payment_id: result.id,
+      ticket_url: transactionData?.ticket_url, // Link do pagamento (opcional para o usuário)
+      qr_code: transactionData?.qr_code,       // Código Copia e Cola
+      qr_code_base64: transactionData?.qr_code_base64, // Imagem do QR Code em Base64
+      amount: amount,
+      status: result.status
     });
 
   } catch (error: any) {
-    console.error("Erro EFI:", error.response?.data || error.message);
+    console.error("Erro Mercado Pago:", error.message);
+    const errorDetails = error.response?.data || error.message;
     res.status(500).json({ 
-      error: "Erro ao gerar PIX", 
-      details: error.response?.data || error.message 
+      error: "Erro ao processar pagamento via Mercado Pago", 
+      details: errorDetails 
     });
   }
 });
