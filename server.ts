@@ -14,6 +14,35 @@ async function startServer() {
   // Middleware para JSON
   app.use(express.json());
 
+  // Proxy route for Pix
+  app.all('/api/external/*', async (req, res) => {
+    const targetUrl = `https://backend-pix-qub4.onrender.com${req.params[0] || ''}`;
+    console.log(`Proxying request to: ${targetUrl}`);
+    
+    try {
+      const response = await fetch(targetUrl, {
+        method: req.method,
+        headers: {
+          'Content-Type': 'application/json',
+          // Omit host header to avoid issues with Render
+        },
+        body: ['POST', 'PUT', 'PATCH'].includes(req.method) ? JSON.stringify(req.body) : undefined,
+      });
+
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const data = await response.json();
+        res.status(response.status).json(data);
+      } else {
+        const text = await response.text();
+        res.status(response.status).send(text);
+      }
+    } catch (error) {
+      console.error('Proxy Error:', error);
+      res.status(500).json({ error: 'Erro ao conectar ao servidor backend (Render)' });
+    }
+  });
+
   // Rota de saúde para o Render
   app.get('/health', (req, res) => {
     res.status(200).send('OK');

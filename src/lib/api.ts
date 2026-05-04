@@ -10,12 +10,14 @@ export async function fetchUserProfile(uid: string) {
 }
 
 const IS_DEV = import.meta.env.DEV;
-export const API_URL = "https://backend-pix-qub4.onrender.com";
+export const API_URL = "/api/external";
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   // Ensure endpoint starts with a slash or is absolute
   const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-  const url = endpoint.startsWith('http') ? endpoint : `${API_URL}${path}`;
+  
+  // No longer use Render URL directly in the browser to avoid CORS
+  const url = `${API_URL}${path}`;
 
   try {
     const response = await fetch(url, {
