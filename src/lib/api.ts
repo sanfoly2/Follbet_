@@ -10,17 +10,16 @@ export async function fetchUserProfile(uid: string) {
 }
 
 const IS_DEV = import.meta.env.DEV;
-export const API_URL = ""; // Empty for relative calls in both dev and prod
+export const API_URL = "https://backend-pix-qub4.onrender.com";
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
-  // Ensure endpoint starts with a slash
+  // Ensure endpoint starts with a slash or is absolute
   const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-  const url = `${API_URL}/api${path}`;
+  const url = endpoint.startsWith('http') ? endpoint : `${API_URL}/api${path}`;
 
   try {
     const response = await fetch(url, {
       ...options,
-      credentials: "include", // Important for cross-origin cookies
       headers: {
         "Content-Type": "application/json",
         ...options.headers,
@@ -42,7 +41,7 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   } catch (error: any) {
     console.error("Fetch Error:", error);
     if (error.message.includes("Failed to fetch")) {
-      throw new Error("Não foi possível conectar ao servidor. Verifique se o backend no Render está online (pode levar 1 minuto para ligar).");
+      throw new Error("Não foi possível conectar ao servidor. Verifique se o backend no Render está online.");
     }
     throw error;
   }

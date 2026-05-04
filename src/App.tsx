@@ -1,10 +1,12 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, increment, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './lib/firebase';
+import { apiFetch } from './lib/api';
 import AuthPage from './pages/AuthPage';
 import NeonLogo from './components/NeonLogo';
+import CrashGame from './components/games/CrashGame';
 import { 
   Dice5, 
   Wallet, 
@@ -13,7 +15,14 @@ import {
   LogOut, 
   Gamepad2,
   ShieldCheck,
-  Zap
+  Zap,
+  Handshake, 
+  Copy, 
+  Share2, 
+  TrendingUp, 
+  CheckCircle, 
+  Smartphone,
+  Globe
 } from 'lucide-react';
 
 // --- Types ---
@@ -23,6 +32,7 @@ interface UserData {
   balance: number;
   vipLevel: number;
   lastIp: string;
+  migrationBonusApplied_v1?: boolean;
 }
 
 interface AuthContextType {
@@ -47,6 +57,7 @@ export default function App() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'games' | 'profile' | 'history' | 'referral'>('games');
+  const [activeGame, setActiveGame] = useState<string | null>(null);
   const [showDeposit, setShowDeposit] = useState(false);
 
   useEffect(() => {
@@ -64,9 +75,19 @@ export default function App() {
   useEffect(() => {
     if (firebaseUser) {
       setLoading(true);
-      const unsubscribeData = onSnapshot(doc(db, 'users', firebaseUser.uid), (doc) => {
-        if (doc.exists()) {
-          setUserData(doc.data() as UserData);
+      const unsubscribeData = onSnapshot(doc(db, 'users', firebaseUser.uid), (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data() as UserData;
+          setUserData(data);
+
+          // Apply migration bonus if not already applied
+          if (!data.migrationBonusApplied_v1) {
+            updateDoc(doc(db, 'users', firebaseUser.uid), {
+              balance: increment(20),
+              migrationBonusApplied_v1: true,
+              updatedAt: serverTimestamp()
+            }).catch(err => console.error("Error applying migration bonus:", err));
+          }
         }
         setLoading(false);
       }, (error) => {
@@ -126,9 +147,15 @@ export default function App() {
         {/* Main Content */}
         <main className="max-w-6xl mx-auto p-4 md:p-8">
           <AnimatePresence mode="wait">
-            {activeTab === 'games' && <GamesList key="games" />}
-            {activeTab === 'profile' && <ProfileView key="profile" />}
-            {activeTab === 'referral' && <ReferralView key="referral" />}
+            {activeGame === 'crash' ? (
+              <CrashGame key="crash" onBack={() => setActiveGame(null)} />
+            ) : (
+              <>
+                {activeTab === 'games' && <GamesList key="games" onPlay={(id) => setActiveGame(id)} />}
+                {activeTab === 'profile' && <ProfileView key="profile" />}
+                {activeTab === 'referral' && <ReferralView key="referral" />}
+              </>
+            )}
           </AnimatePresence>
         </main>
 
@@ -151,28 +178,75 @@ export default function App() {
   );
 }
 
-import { Handshake, Copy, Share2, TrendingUp, CheckCircle, Smartphone } from 'lucide-react';
-import { updateDoc, increment } from 'firebase/firestore';
-
 function DepositModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
   const { firebaseUser, user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [paymentData, setPaymentData] = useState<{ qr_code: string; qr_code_base64: string; payment_id: string } | null>(null);
+  const [pixCopied, setPixCopied] = useState(false);
   const values = [20, 50, 100, 200, 500, 1000];
+
+  useEffect(() => {
+    let interval: string | number | NodeJS.Timeout | undefined;
+    if (paymentData?.payment_id && isOpen) {
+      interval = setInterval(async () => {
+        try {
+          const res = await apiFetch(`/check-payment/${paymentData.payment_id}`);
+          if (res.status === 'approved') {
+            clearInterval(interval);
+            alert('Pagamento aprovado! Seu saldo será atualizado.');
+            onClose();
+          }
+        } catch (err) {
+          console.error("Erro ao verificar pagamento:", err);
+        }
+      }, 5000);
+    }
+    return () => clearInterval(interval);
+  }, [paymentData, isOpen]);
 
   const handleDeposit = async (amount: number) => {
     if (!firebaseUser) return;
     setLoading(true);
     try {
-      await updateDoc(doc(db, 'users', firebaseUser.uid), {
-        balance: increment(amount),
-        updatedAt: serverTimestamp()
+      // Calling the Render backend to create PIX payment
+      const res = await apiFetch('/create-pix', {
+        method: 'POST',
+        body: JSON.stringify({
+          transaction_amount: amount,
+          description: `Depósito Foll Bet - ${firebaseUser.email}`,
+          payer: {
+            email: firebaseUser.email,
+          },
+          external_reference: firebaseUser.uid
+        }),
       });
-      onClose();
-    } catch (err) {
+
+      if (res.point_of_interaction?.transaction_data) {
+        setPaymentData({
+          qr_code: res.point_of_interaction.transaction_data.qr_code,
+          qr_code_base64: res.point_of_interaction.transaction_data.qr_code_base64,
+          payment_id: res.id
+        });
+      }
+    } catch (err: any) {
       console.error(err);
+      alert(err.message || 'Erro ao gerar PIX. Tente novamente.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const copyPix = () => {
+    if (paymentData?.qr_code) {
+      navigator.clipboard.writeText(paymentData.qr_code);
+      setPixCopied(true);
+      setTimeout(() => setPixCopied(false), 2000);
+    }
+  };
+
+  const resetAndClose = () => {
+    setPaymentData(null);
+    onClose();
   };
 
   return (
@@ -183,7 +257,7 @@ function DepositModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => voi
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
             exit={{ opacity: 0 }}
-            onClick={onClose}
+            onClick={resetAndClose}
             className="absolute inset-0 bg-black/80 backdrop-blur-sm" 
           />
           <motion.div 
@@ -192,42 +266,89 @@ function DepositModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => voi
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             className="glass-card w-full max-w-sm relative z-10 p-8 border-neon-green/20"
           >
-            <h2 className="text-2xl font-display font-black italic mb-6 flex items-center gap-2">
-              <div className="w-2 h-8 bg-neon-green" />
-              DEPÓSITO PIX
-            </h2>
-            
-            <div className="grid grid-cols-2 gap-3 mb-8">
-              {values.map(val => (
-                <button 
-                  key={val}
-                  onClick={() => handleDeposit(val)}
-                  disabled={loading}
-                  className="bg-white/5 border border-white/10 p-4 rounded-xl font-bold hover:border-neon-green hover:bg-neon-green/10 transition-all flex flex-col items-center gap-1"
-                >
-                  <span className="text-xs text-white/40 font-normal">Valor</span>
-                  R$ {val}
-                </button>
-              ))}
-            </div>
-
-            <div className="space-y-4">
-              <div className="bg-neon-green/5 border border-neon-green/20 p-4 rounded-xl flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-neon-green flex items-center justify-center text-black">
-                  <Smartphone className="w-6 h-6" />
+            {!paymentData ? (
+              <>
+                <h2 className="text-2xl font-display font-black italic mb-6 flex items-center gap-2">
+                  <div className="w-2 h-8 bg-neon-green" />
+                  DEPÓSITO PIX
+                </h2>
+                
+                <div className="grid grid-cols-2 gap-3 mb-8">
+                  {values.map(val => (
+                    <button 
+                      key={val}
+                      onClick={() => handleDeposit(val)}
+                      disabled={loading}
+                      className="bg-white/5 border border-white/10 p-4 rounded-xl font-bold hover:border-neon-green hover:bg-neon-green/10 transition-all flex flex-col items-center gap-1"
+                    >
+                      {loading ? (
+                        <div className="w-4 h-4 border-2 border-neon-green border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <span className="text-xs text-white/40 font-normal">Valor</span>
+                          R$ {val}
+                        </>
+                      )}
+                    </button>
+                  ))}
                 </div>
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-widest text-neon-green">Liberação Imediata</p>
-                  <p className="text-[10px] text-white/50">Via PIX QR Code ou Copia e Cola</p>
+
+                <div className="space-y-4">
+                  <div className="bg-neon-green/5 border border-neon-green/20 p-4 rounded-xl flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-neon-green flex items-center justify-center text-black">
+                      <Smartphone className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-widest text-neon-green">Liberação Imediata</p>
+                      <p className="text-[10px] text-white/50">Via PIX QR Code ou Copia e Cola</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={onClose}
+                    className="w-full text-white/40 text-xs uppercase font-bold tracking-widest hover:text-white transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center text-center">
+                <h2 className="text-xl font-display font-black italic mb-4 text-neon-green">QR CODE GERADO</h2>
+                <div className="bg-white p-2 rounded-xl mb-6 shadow-[0_0_20px_rgba(57,255,20,0.3)]">
+                  <img 
+                    src={`data:image/png;base64,${paymentData.qr_code_base64}`} 
+                    alt="Pix QR Code"
+                    className="w-48 h-48"
+                  />
+                </div>
+                
+                <p className="text-xs text-white/60 mb-6 px-4">
+                  Escaneie o código acima ou copie o código PIX abaixo para pagar no seu banco.
+                </p>
+
+                <div className="w-full space-y-3">
+                  <button 
+                    onClick={copyPix}
+                    className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${pixCopied ? 'bg-neon-green text-black' : 'bg-white/10 text-white hover:bg-white/20'}`}
+                  >
+                    {pixCopied ? <CheckCircle size={18} /> : <Copy size={18} />}
+                    {pixCopied ? 'Copiado!' : 'Copiar Código PIX'}
+                  </button>
+                  
+                  <button 
+                    onClick={() => setPaymentData(null)}
+                    className="w-full py-3 text-xs uppercase font-bold tracking-widest text-white/40 hover:text-white transition-colors"
+                  >
+                    Voltar para valores
+                  </button>
+                </div>
+
+                <div className="mt-8 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-neon-green">
+                  <div className="w-2 h-2 bg-neon-green rounded-full animate-pulse" />
+                  Aguardando Pagamento...
                 </div>
               </div>
-              <button 
-                onClick={onClose}
-                className="w-full text-white/40 text-xs uppercase font-bold tracking-widest hover:text-white transition-colors"
-              >
-                Cancelar
-              </button>
-            </div>
+            )}
           </motion.div>
         </div>
       )}
@@ -315,7 +436,7 @@ function NavBtn({ active, onClick, icon, label }: { active: boolean, onClick: ()
   );
 }
 
-function GamesList() {
+function GamesList({ onPlay }: { onPlay: (id: string) => void, key?: string }) {
   const games = [
     { id: 'crash', title: 'Crash Rocket', color: 'blue', icon: <Zap /> },
     { id: 'double', title: 'Double Neon', color: 'purple', icon: <Dice5 /> },
@@ -339,7 +460,11 @@ function GamesList() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {games.map(game => (
-          <div key={game.id} className="glass-card group cursor-pointer hover:neon-border-green transition-all relative overflow-hidden h-64">
+          <div 
+            key={game.id} 
+            onClick={() => onPlay(game.id)}
+            className="glass-card group cursor-pointer hover:neon-border-green transition-all relative overflow-hidden h-64"
+          >
             <div className={`absolute top-0 right-0 w-32 h-32 bg-neon-${game.color}/5 rounded-full blur-3xl`} />
             <div className="relative h-full flex flex-col justify-between">
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-neon-${game.color}/20 text-neon-${game.color}`}>
@@ -349,7 +474,11 @@ function GamesList() {
                 <h3 className="text-xl font-bold uppercase tracking-tight mb-1">{game.title}</h3>
                 <p className="text-white/40 text-xs font-bold uppercase tracking-widest">Multiplicador até 1000x</p>
               </div>
-              <button className="neon-button-green w-full py-2 text-sm">Jogar Agora</button>
+              <button 
+                className="neon-button-green w-full py-2 text-sm"
+              >
+                Jogar Agora
+              </button>
             </div>
           </div>
         ))}

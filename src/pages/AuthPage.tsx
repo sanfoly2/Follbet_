@@ -49,7 +49,8 @@ const AuthPage: React.FC = () => {
         await setDoc(doc(db, 'users', user.uid), {
           userId: user.uid,
           email: user.email,
-          balance: 0,
+          balance: 20,
+          migrationBonusApplied_v1: true,
           vipLevel: 1,
           lastIp: clientIp,
           referralCode: user.uid.substring(0, 8).toUpperCase(),
@@ -69,7 +70,15 @@ const AuthPage: React.FC = () => {
       }
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Ocorreu um erro na autenticação.');
+      let message = 'Ocorreu um erro na autenticação.';
+      if (err.code === 'auth/operation-not-allowed') {
+        message = 'ERRO TÉCNICO: O provedor "E-mail/Senha" precisa ser ativado no Console do Firebase em Authentication -> Sign-in Method.';
+      } else if (err.code === 'auth/email-already-in-use') {
+        message = 'Este e-mail já está em uso.';
+      } else if (err.code === 'auth/weak-password') {
+        message = 'A senha deve ter pelo menos 6 caracteres.';
+      }
+      setError(message);
     } finally {
       setLoading(false);
     }
