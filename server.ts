@@ -1,67 +1,52 @@
-import express from "express";
-import { createServer as createViteServer } from "vite";
-import path from "path";
-import fs from "fs";
-import cookieParser from "cookie-parser";
-import cors from "cors";
-import dotenv from "dotenv";
-import requestIp from "request-ip";
-import authRoutes from "./server/routes/auth";
-import gameRoutes from "./server/routes/games";
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { createServer as createViteServer } from 'vite';
 
-dotenv.config();
-
-const __dirname = path.resolve();
+// Configuração para ES Modules no Node.js
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Middleware para JSON
   app.use(express.json());
-  app.use(cookieParser());
-  app.use(cors());
-  app.use(requestIp.mw());
 
-  // IP verification helper middleware
-  app.use((req, res, next) => {
-    const clientIp = (req as any).clientIp;
-    (req as any).ipAddress = clientIp;
-    next();
+  // Rota de saúde para o Render
+  app.get('/health', (req, res) => {
+    res.status(200).send('OK');
   });
 
-  // API Routes
-  app.use("/api/auth", authRoutes);
-  app.use("/api/games", gameRoutes);
-
-  // Health check & IP check
-  app.get("/api/health", (req, res) => {
-    res.json({ 
-      status: "ok", 
-      ip: (req as any).ipAddress,
-      serverTime: new Date().toISOString()
-    });
-  });
-
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+  // Configuração do Vite ou Arquivos Estáticos
+  if (process.env.NODE_ENV !== 'production') {
+    // Ambiente de Desenvolvimento
     const vite = await createViteServer({
       server: { middlewareMode: true },
-      appType: "spa",
+      appType: 'spa',
     });
     app.use(vite.middlewares);
+    console.log('Rodando em modo DESENVOLVIMENTO com Vite middleware');
   } else {
-    const distPath = path.join(__dirname, 'dist');
-    if (fs.existsSync(distPath)) {
-      app.use(express.static(distPath));
-      app.get('*', (req, res) => {
-        res.sendFile(path.join(distPath, 'index.html'));
-      });
-    }
+    // Ambiente de Produção (Render / Linux)
+    const distPath = path.join(process.cwd(), 'dist');
+    app.use(express.static(distPath));
+
+    // Fallback para SPA (Single Page Application)
+    // No Render, isso garante que ao dar F5 em /profile, o servidor retorne o index.html
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+    console.log('Rodando em modo PRODUÇÃO servindo /dist');
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Servidor iniciado em http://localhost:${PORT}`);
   });
 }
 
-startServer();
+startServer().catch((err) => {
+  console.error('Falha ao iniciar o servidor:', err);
+  process.exit(1);
+});
