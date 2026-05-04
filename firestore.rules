@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    
+    // --- User Validation ---
+    function isValidUser(data) {
+      return data.keys().hasAll(['userId', 'email', 'balance', 'referralCode', 'createdAt', 'updatedAt'])
+        && data.keys().size() <= 12
+        && data.userId == request.auth.uid
+        && data.email is string
+        && data.balance is number
+        && data.balance >= 0
+        && data.referralCode is string
+        && data.createdAt == request.time
+        && data.updatedAt == request.time;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) 
+        && incoming().diff(existing()).affectedKeys().hasOnly(['balance', 'vipLevel', 'lastIp', 'referralCount', 'updatedAt'])
+        && incoming().updatedAt == request.time
+        && (incoming().balance is number && incoming().balance >= 0);
+    }
+
+    // IP Logs - User can only create their own logs, cannot delete or update
+    match /ip_logs/{logId} {
+      allow create: if isSignedIn() 
+        && incoming().userId == request.auth.uid
+        && incoming().timestamp == request.time;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+  }
+}

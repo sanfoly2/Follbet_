@@ -1,0 +1,44 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account information and balance",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "format": "email" },
+        "balance": { "type": "number", "description": "Current balance in BRL" },
+        "vipLevel": { "type": "number", "description": "Account VIP level" },
+        "lastIp": { "type": "string", "description": "Last known IP address" },
+        "referralCode": { "type": "string", "description": "Unique code for referrals" },
+        "referredBy": { "type": "string", "description": "UID of the referring user" },
+        "referralCount": { "type": "number", "description": "Total users referred" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "email", "balance", "referralCode", "createdAt", "updatedAt"]
+    },
+    "IpLog": {
+      "title": "IP Access Log",
+      "description": "Log of IP addresses used by users",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "ip": { "type": "string" },
+        "userAgent": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "ip", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User private profile"
+    },
+    "/ip_logs/{logId}": {
+      "schema": "IpLog",
+      "description": "Security logs for IP tracking"
+    }
+  }
+}

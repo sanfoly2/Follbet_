@@ -5,6 +5,7 @@ import fs from "fs";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import dotenv from "dotenv";
+import requestIp from "request-ip";
 import authRoutes from "./server/routes/auth";
 import gameRoutes from "./server/routes/games";
 
@@ -19,14 +20,26 @@ async function startServer() {
   app.use(express.json());
   app.use(cookieParser());
   app.use(cors());
+  app.use(requestIp.mw());
+
+  // IP verification helper middleware
+  app.use((req, res, next) => {
+    const clientIp = (req as any).clientIp;
+    (req as any).ipAddress = clientIp;
+    next();
+  });
 
   // API Routes
   app.use("/api/auth", authRoutes);
   app.use("/api/games", gameRoutes);
 
-  // Health check
+  // Health check & IP check
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok" });
+    res.json({ 
+      status: "ok", 
+      ip: (req as any).ipAddress,
+      serverTime: new Date().toISOString()
+    });
   });
 
   // Vite middleware for development

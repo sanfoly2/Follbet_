@@ -2,6 +2,8 @@
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+
   --color-neon-blue: #00f3ff;
   --color-neon-purple: #bc13fe;
   --color-neon-pink: #ff00ff;
@@ -17,67 +19,59 @@
   }
 }
 
-@layer components {
-  .neon-border {
-    @apply border border-neon-blue/30 shadow-[0_0_15px_rgba(0,243,255,0.2)];
+@layer utilities {
+  .neon-shadow-blue {
+    box-shadow: 0 0 10px #00f3ff, 0 0 20px #00f3ff33;
   }
-  
+  .neon-shadow-green {
+    box-shadow: 0 0 10px #39ff14, 0 0 20px #39ff1433;
+  }
+  .neon-shadow-purple {
+    box-shadow: 0 0 10px #bc13fe, 0 0 20px #bc13fe33;
+  }
   .neon-text-blue {
-    @apply text-neon-blue drop-shadow-[0_0_8px_rgba(0,243,255,0.6)];
+    text-shadow: 0 0 5px #00f3ff, 0 0 10px #00f3ff;
   }
-
+  .neon-text-green {
+    text-shadow: 0 0 5px #39ff14, 0 0 10px #39ff14;
+  }
+  .neon-text-magenta {
+    text-shadow: 0 0 5px #ff00ff, 0 0 10px #ff00ff;
+  }
   .neon-text-purple {
-    @apply text-neon-purple drop-shadow-[0_0_8px_rgba(188,19,254,0.6)];
+    text-shadow: 0 0 5px #bc13fe, 0 0 10px #bc13fe;
   }
+}
 
-  .neon-text-yellow {
-    @apply text-neon-yellow drop-shadow-[0_0_8px_rgba(244,234,19,0.6)];
-  }
-
-  .neon-button-blue {
-    @apply px-6 py-2 rounded-lg font-bold transition-all duration-300 active:scale-95 bg-transparent border-2 border-neon-blue text-neon-blue hover:bg-neon-blue hover:text-black hover:shadow-[0_0_20px_rgba(0,243,255,0.8)];
-  }
-
-  .neon-button-purple {
-    @apply px-6 py-2 rounded-lg font-bold transition-all duration-300 active:scale-95 bg-transparent border-2 border-neon-purple text-neon-purple hover:bg-neon-purple hover:text-black hover:shadow-[0_0_20px_rgba(188,19,254,0.8)];
-  }
-  
-  .neon-button-green {
-    @apply px-6 py-2 rounded-lg font-bold transition-all duration-300 active:scale-95 bg-neon-green text-black shadow-[0_0_15px_#39ff14] hover:shadow-[0_0_25px_#39ff14];
-  }
-
+@layer components {
   .glass-card {
     @apply bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6;
   }
 
-  .vertical-text {
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-    transform: rotate(180deg);
+  .neon-button-green {
+    @apply px-6 py-3 rounded-xl font-bold transition-all duration-300 active:scale-95 bg-neon-green text-black shadow-[0_0_15px_#39ff14] hover:shadow-[0_0_25px_#39ff14] disabled:opacity-50 disabled:shadow-none;
   }
 
-  .jackpot-gradient {
-    @apply bg-gradient-to-r from-orange-500 via-yellow-400 to-orange-500 bg-clip-text text-transparent font-black uppercase italic;
+  .neon-button-outline {
+    @apply px-6 py-3 rounded-xl font-bold transition-all duration-300 active:scale-95 bg-transparent border-2 border-neon-blue text-neon-blue hover:bg-neon-blue hover:text-black hover:shadow-[0_0_20px_#00f3ff];
+  }
+
+  .neon-input {
+    @apply bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-neon-blue focus:ring-1 focus:ring-neon-blue transition-all;
   }
 }
 
-.animate-glow {
-  animation: glow 2s ease-in-out infinite alternate;
+.animate-pulse-cyan {
+  animation: pulse-cyan 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-@keyframes glow {
-  from {
+@keyframes pulse-cyan {
+  0%, 100% {
+    opacity: 1;
     text-shadow: 0 0 10px #00f3ff, 0 0 20px #00f3ff;
   }
-  to {
-    text-shadow: 0 0 20px #00f3ff, 0 0 30px #bc13fe;
+  50% {
+    opacity: .7;
+    text-shadow: 0 0 5px #00f3ff, 0 0 10px #00f3ff;
   }
-}
-
-.scrollbar-none::-webkit-scrollbar {
-  display: none;
-}
-.scrollbar-none {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
 }
