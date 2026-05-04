@@ -16,7 +16,9 @@ async function startServer() {
 
   // Proxy route for Pix
   app.all('/api/external/*', async (req, res) => {
-    const targetUrl = `https://backend-pix-qub4.onrender.com${req.params[0] || ''}`;
+    // req.params[0] captures the part matching *
+    const relativePath = req.params[0] || '';
+    const targetUrl = `https://follbet.onrender.com/${relativePath}`;
     console.log(`Proxying request to: ${targetUrl}`);
     
     try {

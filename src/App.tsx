@@ -209,7 +209,7 @@ function DepositModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => voi
     setLoading(true);
     try {
       // Calling the Render backend to create PIX payment
-      const res = await apiFetch('/Pix', {
+      const res = await apiFetch('/pix', {
         method: 'POST',
         body: JSON.stringify({
           transaction_amount: amount,
