@@ -1,7 +1,13 @@
 import express from 'express';
 import path from 'path';
+import cookieParser from 'cookie-parser';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
+
+// Routes
+import authRoutes from './server/routes/auth.js';
+import pixRoutes from './server/routes/pix.js';
+import gameRoutes from './server/routes/games.js';
 
 // Configuração para ES Modules no Node.js
 const __filename = fileURLToPath(import.meta.url);
@@ -13,13 +19,21 @@ async function startServer() {
 
   // Middleware para JSON
   app.use(express.json());
+  app.use(cookieParser());
 
-  // Proxy route for Pix
-  app.all('/api/external/*', async (req, res) => {
-    // req.params[0] captures the part matching *
-    const relativePath = req.params[0] || '';
-    const targetUrl = `https://follbet.onrender.com/${relativePath}`;
-    console.log(`Proxying request to: ${targetUrl}`);
+  // Rota do Pix (Directly at /pix as requested)
+  app.use('/pix', pixRoutes);
+  
+  // Auth and Game Routes
+  app.use('/auth', authRoutes);
+  app.use('/api/games', gameRoutes);
+  app.use('/', authRoutes); // Fallback for root auth routes
+
+  // Proxy route for Pix (optional fallback if external backend is still needed)
+  app.use('/api/external', async (req, res) => {
+    // req.url contains the path after /api/external
+    const targetUrl = `https://follbet.onrender.com${req.url}`;
+    console.log(`Proxying ${req.method} request to: ${targetUrl}`);
     
     try {
       const response = await fetch(targetUrl, {

@@ -1,13 +1,14 @@
 import express from "express";
 import jwt from "jsonwebtoken";
-import { users } from "./auth";
+import { users } from "./auth.js";
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret";
 
 // Middleware to protect game routes
 const authenticate = (req: any, res: any, next: any) => {
-  const token = req.cookies.token;
+  const token = req.cookies?.token;
+
   if (!token) return res.status(401).json({ error: "Não autenticado" });
 
   try {

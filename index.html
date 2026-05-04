@@ -3,10 +3,54 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
+    <title>Foll Bet - Originals</title>
+    <style>
+      body {
+        margin: 0;
+        background-color: #08080c;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+      .initial-loader {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+      }
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(57, 255, 20, 0.1);
+        border-top-color: #39FF14;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        box-shadow: 0 0 15px rgba(57, 255, 20, 0.2);
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      .logo-text {
+        color: #fff;
+        font-weight: 900;
+        letter-spacing: -1px;
+        font-size: 24px;
+        font-style: italic;
+      }
+      .logo-dot {
+        color: #39FF14;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="initial-loader">
+        <div class="logo-text">FOLL<span class="logo-dot">.</span>BET</div>
+        <div class="spinner"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -1,56 +1,29 @@
-import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { useState, useEffect, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
 import { doc, onSnapshot, updateDoc, increment, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './lib/firebase';
 import { apiFetch } from './lib/api';
-import AuthPage from './pages/AuthPage';
 import NeonLogo from './components/NeonLogo';
-import CrashGame from './components/games/CrashGame';
 import { 
   Dice5, 
   Wallet, 
   User as UserIcon, 
-  History, 
   LogOut, 
-  Gamepad2,
-  ShieldCheck,
-  Zap,
   Handshake, 
   Copy, 
-  Share2, 
-  TrendingUp, 
   CheckCircle, 
   Smartphone,
-  Globe
+  Copy as CopyIcon
 } from 'lucide-react';
+import { AuthContext, UserData, useAuth } from './context/AuthContext';
 
-// --- Types ---
-interface UserData {
-  userId: string;
-  email: string;
-  balance: number;
-  vipLevel: number;
-  lastIp: string;
-  migrationBonusApplied_v1?: boolean;
-}
-
-interface AuthContextType {
-  user: UserData | null;
-  firebaseUser: FirebaseUser | null;
-  loading: boolean;
-  logout: () => void;
-}
-
-const AuthContext = createContext<AuthContextType | null>(null);
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
-  return context;
-};
-
-// --- Main App ---
+// Lazy loaded components for better performance
+const AuthPage = lazy(() => import('./pages/AuthPage'));
+const GamesList = lazy(() => import('./components/GamesList'));
+const ProfileView = lazy(() => import('./components/ProfileView'));
+const ReferralView = lazy(() => import('./components/ReferralView'));
+const CrashGame = lazy(() => import('./components/games/CrashGame'));
 
 export default function App() {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
@@ -80,7 +53,6 @@ export default function App() {
           const data = docSnap.data() as UserData;
           setUserData(data);
 
-          // Apply migration bonus if not already applied
           if (!data.migrationBonusApplied_v1) {
             updateDoc(doc(db, 'users', firebaseUser.uid), {
               balance: increment(20),
@@ -103,30 +75,25 @@ export default function App() {
   if (loading) {
     return (
       <div className="min-h-screen bg-dark-bg flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <NeonLogo size="md" />
-          <div className="flex gap-1">
-            <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="w-2 h-2 bg-neon-blue rounded-full" />
-            <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-2 h-2 bg-neon-purple rounded-full" />
-            <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-2 h-2 bg-neon-green rounded-full" />
-          </div>
-        </div>
+        <LoadingSkeleton />
       </div>
     );
   }
 
   if (!firebaseUser) {
-    return <AuthPage />;
+    return (
+      <Suspense fallback={<LoadingSkeleton />}>
+        <AuthPage />
+      </Suspense>
+    );
   }
 
   return (
     <AuthContext.Provider value={{ user: userData, firebaseUser, loading, logout }}>
       <div className="min-h-screen pb-24 text-white">
-        {/* Navigation Top */}
         <header className="sticky top-0 z-50 bg-dark-bg/80 backdrop-blur-xl border-b border-white/5 p-4">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
             <NeonLogo size="sm" />
-            
             <div className="flex items-center gap-4">
               <div className="bg-white/5 px-4 py-1 rounded-xl flex items-center gap-3 border border-white/10 pr-1">
                 <Wallet className="w-4 h-4 text-neon-blue" />
@@ -144,24 +111,24 @@ export default function App() {
           </div>
         </header>
 
-        {/* Main Content */}
         <main className="max-w-6xl mx-auto p-4 md:p-8">
-          <AnimatePresence mode="wait">
-            {activeGame === 'crash' ? (
-              <CrashGame key="crash" onBack={() => setActiveGame(null)} />
-            ) : (
-              <>
-                {activeTab === 'games' && <GamesList key="games" onPlay={(id) => setActiveGame(id)} />}
-                {activeTab === 'profile' && <ProfileView key="profile" />}
-                {activeTab === 'referral' && <ReferralView key="referral" />}
-              </>
-            )}
-          </AnimatePresence>
+          <Suspense fallback={<LoadingSkeleton />}>
+            <AnimatePresence mode="wait">
+              {activeGame === 'crash' ? (
+                <CrashGame key="crash" onBack={() => setActiveGame(null)} />
+              ) : (
+                <>
+                  {activeTab === 'games' && <GamesList key="games" onPlay={(id) => setActiveGame(id)} />}
+                  {activeTab === 'profile' && <ProfileView key="profile" />}
+                  {activeTab === 'referral' && <ReferralView key="referral" />}
+                </>
+              )}
+            </AnimatePresence>
+          </Suspense>
         </main>
 
         <DepositModal isOpen={showDeposit} onClose={() => setShowDeposit(false)} />
 
-        {/* Navigation Bottom */}
         <nav className="fixed bottom-0 left-0 right-0 z-50 p-4 pb-8 md:pb-4 flex justify-center pointer-events-none">
           <div className="bg-black/60 backdrop-blur-2xl border border-white/10 p-2 rounded-2xl flex gap-1 pointer-events-auto shadow-2xl">
             <NavBtn active={activeTab === 'games'} onClick={() => setActiveTab('games')} icon={<Dice5 />} label="Jogos" />
@@ -178,8 +145,21 @@ export default function App() {
   );
 }
 
+function LoadingSkeleton() {
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <NeonLogo size="md" />
+      <div className="flex gap-1">
+        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="w-2 h-2 bg-neon-blue rounded-full" />
+        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-2 h-2 bg-neon-purple rounded-full" />
+        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-2 h-2 bg-neon-green rounded-full" />
+      </div>
+    </div>
+  );
+}
+
 function DepositModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
-  const { firebaseUser, user } = useAuth();
+  const { firebaseUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [paymentData, setPaymentData] = useState<{ qr_code: string; qr_code_base64: string; payment_id: string } | null>(null);
   const [pixCopied, setPixCopied] = useState(false);
@@ -209,7 +189,7 @@ function DepositModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => voi
     setLoading(true);
     try {
       // Calling the Render backend to create PIX payment
-      const res = await apiFetch('/pix', {
+      const res = await apiFetch('/Pix', {
         method: 'POST',
         body: JSON.stringify({
           transaction_amount: amount,
@@ -359,69 +339,7 @@ function DepositModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => voi
   );
 }
 
-function ReferralView() {
-  const { user } = useAuth();
-  const [copied, setCopied] = useState(false);
-
-  const copyLink = () => {
-    navigator.clipboard.writeText(`https://follbet.com/r/${user?.referralCode}`);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0 }}
-      className="max-w-4xl mx-auto space-y-8"
-    >
-      <div className="relative overflow-hidden glass-card p-10 flex flex-col items-center text-center border-neon-purple/20">
-        <div className="absolute top-0 right-0 p-8 text-white/5 pointer-events-none">
-          <Handshake size={120} />
-        </div>
-        
-        <h2 className="text-4xl font-display font-black italic tracking-tighter mb-4">
-          INDIQUE <span className="text-neon-purple neon-text-purple">&</span> GANHE
-        </h2>
-        <p className="text-white/60 max-w-md mb-8">
-          Compartilhe seu código e ganhe <span className="text-neon-green font-bold">R$ 10,00</span> por cada amigo que depositar e jogar na Foll Bet.
-        </p>
-
-        <div className="bg-black/40 border border-white/5 p-2 rounded-2xl flex items-center gap-4 w-full max-w-sm mb-12">
-          <div className="bg-white/5 px-4 py-2 rounded-xl flex flex-col items-start flex-1">
-            <span className="text-[8px] uppercase font-bold text-white/30 tracking-widest">Seu Código</span>
-            <span className="font-mono font-bold text-neon-purple">{user?.referralCode || '-------'}</span>
-          </div>
-          <button 
-            onClick={copyLink}
-            className={`p-4 rounded-xl transition-all ${copied ? 'bg-neon-green text-black' : 'bg-neon-purple text-black shadow-[0_0_15px_#bc13fe]'}`}
-          >
-           {copied ? <CheckCircle size={20} /> : <Copy size={20} />}
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-          <RefStat icon={<UserIcon />} value={user?.referralCount || 0} label="Amigos Indicados" />
-          <RefStat icon={<TrendingUp />} value={`R$ ${(user?.referralCount || 0) * 10}`} label="Total Ganho" />
-          <RefStat icon={<Share2 />} value="∞" label="Limite de Bônus" />
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-function RefStat({ icon, value, label }: { icon: ReactNode, value: string | number, label: string }) {
-  return (
-    <div className="bg-white/5 border border-white/10 p-6 rounded-2xl flex flex-col items-center gap-2">
-      <div className="text-white/40">{icon}</div>
-      <div className="text-2xl font-black italic text-neon-green font-display">{value}</div>
-      <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30">{label}</div>
-    </div>
-  );
-}
-
-function NavBtn({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: ReactNode, label: string }) {
+function NavBtn({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: any, label: string }) {
   return (
     <button 
       onClick={onClick}
@@ -436,106 +354,5 @@ function NavBtn({ active, onClick, icon, label }: { active: boolean, onClick: ()
         />
       )}
     </button>
-  );
-}
-
-function GamesList({ onPlay }: { onPlay: (id: string) => void, key?: string }) {
-  const games = [
-    { id: 'crash', title: 'Crash Rocket', color: 'blue', icon: <Zap /> },
-    { id: 'double', title: 'Double Neon', color: 'purple', icon: <Dice5 /> },
-    { id: 'slots', title: 'Ultra Slots', color: 'green', icon: <Gamepad2 /> },
-  ];
-
-  return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0 }}
-      className="space-y-8"
-    >
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-display font-black italic tracking-wide text-white/90">ORIGINAIS FOLL</h2>
-        <div className="flex items-center gap-2 text-neon-green bg-neon-green/10 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
-          <div className="w-2 h-2 bg-neon-green rounded-full animate-pulse" />
-          Ao Vivo (142 Jogadores)
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {games.map(game => (
-          <div 
-            key={game.id} 
-            onClick={() => onPlay(game.id)}
-            className="glass-card group cursor-pointer hover:neon-border-green transition-all relative overflow-hidden h-64"
-          >
-            <div className={`absolute top-0 right-0 w-32 h-32 bg-neon-${game.color}/5 rounded-full blur-3xl`} />
-            <div className="relative h-full flex flex-col justify-between">
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-neon-${game.color}/20 text-neon-${game.color}`}>
-                {game.icon}
-              </div>
-              <div>
-                <h3 className="text-xl font-bold uppercase tracking-tight mb-1">{game.title}</h3>
-                <p className="text-white/40 text-xs font-bold uppercase tracking-widest">Multiplicador até 1000x</p>
-              </div>
-              <button 
-                className="neon-button-green w-full py-2 text-sm"
-              >
-                Jogar Agora
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </motion.div>
-  );
-}
-
-function ProfileView() {
-  const { user, firebaseUser } = useAuth();
-
-  return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0 }}
-      className="max-w-2xl mx-auto space-y-8"
-    >
-      <div className="glass-card flex flex-col items-center text-center py-10 relative overflow-hidden">
-        <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-neon-blue via-neon-purple to-neon-green" />
-        
-        <div className="w-24 h-24 bg-neon-purple/20 rounded-full flex items-center justify-center text-neon-purple shadow-[0_0_30px_rgba(188,19,254,0.2)] mb-6">
-          <UserIcon size={48} />
-        </div>
-        
-        <h2 className="text-xl font-bold mb-1">{user?.email}</h2>
-        <div className="flex items-center gap-2 mb-4">
-           <span className="text-[10px] font-mono text-white/30 bg-white/5 px-3 py-1 rounded-full">
-            ID: {firebaseUser?.uid}
-           </span>
-        </div>
-
-        <div className="flex flex-wrap justify-center gap-3">
-          <div className="flex items-center gap-2 text-white/50 bg-white/5 px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
-            <ShieldCheck className="w-3 h-3 text-neon-green" />
-            Conta Verificada
-          </div>
-          <div className="flex items-center gap-2 text-white/50 bg-white/5 px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
-            <Globe className="w-3 h-3 text-neon-blue" />
-            IP: {user?.lastIp}
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="glass-card text-center p-6 bg-neon-blue/5 border-neon-blue/20">
-          <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-2">Seu Nível</p>
-          <h3 className="text-3xl font-black text-neon-blue italic font-display">VIP {user?.vipLevel}</h3>
-        </div>
-        <div className="glass-card text-center p-6 bg-neon-purple/5 border-neon-purple/20">
-          <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-2">Indicações</p>
-          <h3 className="text-3xl font-black text-neon-purple italic font-display">{user?.referralCount}</h3>
-        </div>
-      </div>
-    </motion.div>
   );
 }
