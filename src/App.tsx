@@ -19,7 +19,7 @@ import {
 import { AuthContext, UserData, useAuth } from './context/AuthContext.js';
 
 // Lazy loaded components for better performance
-const AuthPage = lazy(() => import('./pages/AuthPage.js'));
+import AuthPage from './pages/AuthPage.js';
 const GamesList = lazy(() => import('./components/GamesList.js'));
 const ProfileView = lazy(() => import('./components/ProfileView.js'));
 const ReferralView = lazy(() => import('./components/ReferralView.js'));
@@ -85,18 +85,14 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-dark-bg flex items-center justify-center">
+      <div className="min-h-[100dvh] bg-dark-bg flex flex-col items-center justify-center p-6 overflow-hidden">
         <LoadingSkeleton />
       </div>
     );
   }
 
   if (!firebaseUser) {
-    return (
-      <Suspense fallback={<LoadingSkeleton />}>
-        <AuthPage />
-      </Suspense>
-    );
+    return <AuthPage />;
   }
 
   return (
@@ -195,31 +191,31 @@ export default function App() {
 
 function LoadingSkeleton() {
   return (
-    <div className="flex flex-col items-center gap-12 py-12">
-      <div className="relative w-24 h-24 flex items-center justify-center">
+    <div className="flex flex-col items-center gap-10">
+      <div className="relative w-20 h-20 flex items-center justify-center">
         <motion.div 
           animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="absolute inset-0 border-2 border-neon-green/5 border-t-neon-green rounded-full shadow-[0_0_20px_rgba(57,255,20,0.3)]"
+          transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
+          className="absolute inset-0 border-[3px] border-neon-green/10 border-t-neon-green rounded-full shadow-[0_0_20px_#39ff1433]"
         />
-        <motion.div 
-          animate={{ rotate: [45, 225, 405], scale: [1, 0.8, 1] }}
-          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-          className="w-10 h-10 bg-neon-green rounded-lg shadow-[0_0_20px_rgba(57,255,20,0.5)]"
-        />
+        <div className="w-8 h-8 bg-neon-green rounded-lg shadow-[0_0_30px_#39ff14] transform rotate-45 animate-pulse" />
       </div>
       <div className="flex flex-col items-center gap-4">
-        <NeonLogo size="md" />
-        <div className="w-48 h-1 bg-white/5 rounded-full overflow-hidden">
-          <motion.div 
-            animate={{ x: [-200, 200] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            className="w-20 h-full bg-neon-green shadow-[0_0_10px_#39ff14]"
-          />
+        <div className="text-3xl font-display font-black italic text-white tracking-tighter">
+          FOLL<span className="text-neon-green">.</span>BET
         </div>
-        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 animate-pulse">
-          Sincronizando Sistema
-        </span>
+        <div className="flex flex-col items-center gap-2">
+          <div className="w-32 h-0.5 bg-white/5 rounded-full overflow-hidden">
+            <motion.div 
+              animate={{ x: [-150, 150] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+              className="w-12 h-full bg-neon-green shadow-[0_0_10px_#39ff14]"
+            />
+          </div>
+          <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/20">
+            Sincronizando
+          </span>
+        </div>
       </div>
     </div>
   );

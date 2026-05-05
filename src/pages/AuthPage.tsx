@@ -89,7 +89,7 @@ const AuthPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative bg-dark-bg selection:bg-neon-blue selection:text-black">
+    <div className="min-h-[100dvh] flex items-center justify-center p-4 relative bg-dark-bg selection:bg-neon-blue selection:text-black overflow-hidden">
       {/* Immersive Auth Atmosphere */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-neon-blue/10 rounded-full blur-[140px] animate-pulse" />

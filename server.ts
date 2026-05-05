@@ -97,8 +97,11 @@ async function startServer() {
     
     console.log(`Verificando pasta dist em: ${distPath}`);
     
-    // Serve os arquivos estáticos da pasta dist
-    app.use(express.static(distPath));
+    // Serve os arquivos estáticos da pasta dist com cache
+    app.use(express.static(distPath, {
+      maxAge: '1h', // Pequeno cache para assets
+      index: false
+    }));
 
     // Fallback para SPA (Single Page Application)
     // Qualquer rota que não seja capturada pelas APIs acima servirá o index.html
