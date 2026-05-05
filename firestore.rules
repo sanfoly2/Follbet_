@@ -12,16 +12,22 @@ service cloud.firestore {
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
+    function isAdmin() { return isSignedIn() && request.auth.token.email == 'sansilva772@gmail.com' && request.auth.token.email_verified == true; }
     
     // --- User Validation ---
     function isValidUser(data) {
       return data.keys().hasAll(['userId', 'email', 'balance', 'referralCode', 'createdAt', 'updatedAt'])
-        && data.keys().size() <= 12
+        && data.keys().size() <= 20
+        && data.userId == request.auth.uid;
+    }
+
+    // --- Withdrawal Validation ---
+    function isValidWithdrawal(data) {
+      return data.keys().hasAll(['userId', 'email', 'amount', 'cpf', 'status', 'createdAt', 'updatedAt'])
         && data.userId == request.auth.uid
-        && data.email is string
-        && data.balance is number
-        && data.balance >= 0
-        && data.referralCode is string
+        && data.amount is number
+        && data.amount > 0
+        && data.status == 'pending'
         && data.createdAt == request.time
         && data.updatedAt == request.time;
     }
@@ -29,10 +35,18 @@ service cloud.firestore {
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow create: if isOwner(userId) && isValidUser(incoming());
-      allow update: if isOwner(userId) 
-        && incoming().diff(existing()).affectedKeys().hasOnly(['balance', 'vipLevel', 'lastIp', 'referralCount', 'updatedAt'])
+      allow update: if (isOwner(userId) 
+        && incoming().diff(existing()).affectedKeys().hasOnly(['balance', 'bonusBalance', 'bonusRolloverProgress', 'bonusRolloverTarget', 'vipLevel', 'lastIp', 'referralCount', 'updatedAt', 'previewBonusV2'])
         && incoming().updatedAt == request.time
-        && (incoming().balance is number && incoming().balance >= 0);
+        && (incoming().balance is number && incoming().balance >= 0))
+        || isAdmin();
+    }
+
+    match /withdrawals/{withdrawalId} {
+      allow create: if isSignedIn() && isValidWithdrawal(incoming());
+      allow get: if isOwner(existing().userId) || isAdmin();
+      allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow update: if isAdmin(); // Only admin can approve/reject
     }
 
     // IP Logs - User can only create their own logs, cannot delete or update

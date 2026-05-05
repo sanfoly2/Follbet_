@@ -177,8 +177,8 @@ const AviatorGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
     const tick = () => {
       const elapsed = (Date.now() - startTimeRef.current) / 1000;
-      // Adjusted exponential curve for a calmer, more emotional growth
-      const currentMult = Math.pow(1.03, elapsed * 15);
+      // Adjusted exponential curve for a smoother, more "emotional" start (starts slow, then picks up)
+      const currentMult = Math.pow(1.06, elapsed * 1.5);
       
       setMultiplier(currentMult);
 
@@ -210,22 +210,18 @@ const AviatorGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const draw = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, elapsed: number, currentMult: number) => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Parallax Stars Background (Optimized & More Emotional)
+    // Parallax Stars Background (More dynamic and emotional)
     const time = Date.now() / 1000;
+    const speed = 20 + (currentMult * 10); // Speed increases with multiplier
     for(let i = 0; i < 40; i++) {
-        const x = (i * 137.5 - time * (30 + i)) % canvas.width;
-        const y = (i * 243.1 + Math.sin(time + i) * 10) % canvas.height;
+        const x = (i * 137.5 - time * (speed + i * 0.5)) % canvas.width;
+        const y = (i * 243.1 + Math.sin(time * 0.5 + i) * 15) % canvas.height;
         const size = (i % 2) + 0.5;
-        const alpha = 0.05 + Math.abs(Math.sin(time + i)) * 0.2;
+        const alpha = 0.1 + Math.abs(Math.sin(time + i)) * 0.3;
         ctx.fillStyle = `rgba(188, 19, 254, ${alpha})`;
         ctx.beginPath();
         const adjustedX = x < 0 ? canvas.width + x : x;
-        ctx.arc(adjustedX, y, size, 1, Math.PI * 2);
-        ctx.fill();
-        
-        ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.5})`;
-        ctx.beginPath();
-        ctx.arc(adjustedX + 1, y + 1, size / 2, 0, Math.PI * 2);
+        ctx.arc(adjustedX, y, size, 0, Math.PI * 2);
         ctx.fill();
     }
 
@@ -279,10 +275,10 @@ const AviatorGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     ctx.beginPath();
     ctx.moveTo(margin, canvas.height - margin);
     
-    const activePoints = 60; // Fixed number of points for smoothness
+    const activePoints = 100; // Increased points for ultimate smoothness
     for(let i = 0; i <= activePoints; i++) {
       const t = (elapsed * (i / activePoints));
-      const m = Math.pow(1.03, t * 15);
+      const m = Math.pow(1.06, t * 1.5);
       
       const px = margin + (width * (i / activePoints));
       const py = (canvas.height - margin) - (height * (m - 1) / (maxVisMult - 1));
@@ -306,36 +302,60 @@ const AviatorGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     ctx.fill();
     ctx.restore();
 
-    // Draw Rocket (Optimized shape)
+    // Draw Rocket (Smooth movement and float effect)
     ctx.save();
-    ctx.translate(lastX, lastY);
-    ctx.rotate(-Math.PI / 4.5); // Slight angle for movement feel
+    const floatY = Math.sin(time * 4) * 3; // Subtle float movement
+    ctx.translate(lastX, lastY + floatY);
     
-    // Flame effect
+    // Smooth rotation based on speed of climb
+    const rotation = -Math.PI / 6 * Math.min(1, (currentMult - 1) / 5);
+    ctx.rotate(rotation);
+    
+    // Engine Glow / Fire
     if (gameState === 'running') {
-      const flameSize = 5 + Math.random() * 5;
+      const pulse = Math.abs(Math.sin(time * 10));
+      const flameSize = 10 + pulse * 15;
       const flameGrad = ctx.createRadialGradient(0, 5, 0, 0, 5, flameSize);
-      flameGrad.addColorStop(0, '#ff4d00');
+      flameGrad.addColorStop(0, '#bc13fe');
+      flameGrad.addColorStop(0.4, 'rgba(188, 19, 254, 0.4)');
       flameGrad.addColorStop(1, 'transparent');
       ctx.fillStyle = flameGrad;
       ctx.beginPath();
       ctx.arc(0, 10, flameSize, 0, Math.PI * 2);
       ctx.fill();
+      
+      // Core flame
+      ctx.fillStyle = 'white';
+      ctx.beginPath();
+      ctx.arc(0, 8, 3 + pulse * 2, 0, Math.PI * 2);
+      ctx.fill();
     }
 
+    // Rocket Body (Follbet Unique Style)
     ctx.fillStyle = '#bc13fe';
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = '#bc13fe';
     ctx.beginPath();
-    ctx.moveTo(0, -15);
-    ctx.lineTo(8, 10);
-    ctx.lineTo(-8, 10);
+    ctx.moveTo(0, -18); // Pointier nose
+    ctx.lineTo(10, 12);
+    ctx.lineTo(-10, 12);
     ctx.closePath();
     ctx.fill();
     
-    // Rocket Detail
-    ctx.fillStyle = 'white';
+    // Wings
+    ctx.fillStyle = '#9d00d5';
     ctx.beginPath();
-    ctx.arc(0, -2, 2, 0, Math.PI * 2);
+    ctx.moveTo(-10, 5);
+    ctx.lineTo(-18, 15);
+    ctx.lineTo(-10, 12);
     ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(10, 5);
+    ctx.lineTo(18, 15);
+    ctx.lineTo(10, 12);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
     ctx.restore();
   };
 
@@ -480,6 +500,19 @@ const AviatorGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 </div>
 
                 <div className="flex flex-col gap-4">
+                   <div className="flex items-center justify-between mb-1">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-white/20">Modo de Aposta</span>
+                      <div className="flex gap-2">
+                        {(user?.balance || 0) >= betAmount && (
+                          <div className="px-2 py-0.5 bg-neon-blue/10 border border-neon-blue/20 rounded text-[8px] font-bold text-neon-blue uppercase">Real</div>
+                        )}
+                        {(user?.bonusBalance || 0) >= betAmount && (
+                          <div className={`px-2 py-0.5 bg-neon-purple/10 border border-neon-purple/20 rounded text-[8px] font-bold text-neon-purple uppercase ${(user?.balance || 0) < betAmount ? 'animate-pulse' : ''}`}>
+                            {(user?.balance || 0) < betAmount ? 'Usando Bônus' : 'Bônus Disponível'}
+                          </div>
+                        )}
+                      </div>
+                   </div>
                    <div className="flex items-center gap-2">
                       <div className="flex-1 bg-black/40 border border-white/5 p-3 rounded-2xl flex items-center justify-between group">
                         <button onClick={() => setBetAmount(Math.max(1, betAmount - 1))} className="w-10 h-10 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/5 rounded-xl transition-all">
@@ -506,18 +539,28 @@ const AviatorGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                    {gameState === 'running' && hasBet ? (
                      <button
                        onClick={handleCashout}
-                       className="w-full h-20 bg-neon-purple text-black font-display font-black italic text-xl rounded-2xl shadow-[0_0_30px_#bc13fe] hover:scale-[1.02] active:scale-95 transition-all overflow-hidden relative group"
+                       className="w-full h-24 bg-neon-purple text-black font-display font-black italic rounded-3xl shadow-[0_20px_50px_rgba(188,19,254,0.4)] hover:scale-[1.03] active:scale-95 transition-all overflow-hidden relative group flex flex-col items-center justify-center border-b-4 border-black/20"
                      >
-                        <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12" />
-                        <span className="relative z-10 uppercase tracking-tighter">SACAR R$ {(betAmount * multiplier).toFixed(2)}</span>
+                        <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 skew-x-12" />
+                        <span className="text-[10px] uppercase tracking-[0.3em] font-black opacity-60 mb-1">CASH OUT</span>
+                        <span className="relative z-10 text-2xl uppercase tracking-tighter">
+                          R$ {(betAmount * multiplier).toFixed(2)}
+                        </span>
                      </button>
                    ) : (
                      <button
                        onClick={handleBet}
                        disabled={gameState !== 'betting' || hasBet}
-                       className="w-full h-20 bg-neon-green text-black font-display font-black italic text-2xl rounded-2xl shadow-[0_0_30px_rgba(57,255,20,0.2)] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30 disabled:scale-100 disabled:shadow-none"
+                       className={`w-full h-24 font-display font-black italic text-2xl rounded-3xl transition-all flex flex-col items-center justify-center border-b-4 border-black/20 
+                        ${hasBet 
+                          ? 'bg-white/5 text-white/20 border-transparent shadow-none cursor-not-allowed' 
+                          : 'bg-neon-green text-black shadow-[0_20px_40px_rgba(57,255,20,0.2)] hover:scale-[1.03] active:scale-95'
+                        }`}
                      >
-                       {hasBet ? 'APOSTA REALIZADA' : 'FAZER APOSTA'}
+                       <span className="text-[10px] uppercase tracking-[0.3em] font-black opacity-60 mb-1">
+                        {hasBet ? 'AGUARDANDO PROXIMO' : 'PARTICIPAR'}
+                       </span>
+                       <span className="uppercase">{hasBet ? 'APOSTA ATIVA' : 'APOSTAR'}</span>
                      </button>
                    )}
                 </div>

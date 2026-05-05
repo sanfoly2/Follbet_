@@ -1,9 +1,29 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { User as UserIcon, ShieldCheck, Globe, Wallet } from 'lucide-react';
+import { User as UserIcon, ShieldCheck, Globe, Wallet, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
+import { db } from '../lib/firebase.js';
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 
-export default function ProfileView() {
+export default function ProfileView({ onShowWithdraw }: { onShowWithdraw: () => void }) {
   const { user, firebaseUser } = useAuth();
+  const [withdrawals, setWithdrawals] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!firebaseUser) return;
+    const q = query(
+      collection(db, 'withdrawals'),
+      where('userId', '==', firebaseUser.uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setWithdrawals(data);
+    });
+
+    return () => unsubscribe();
+  }, [firebaseUser]);
 
   return (
     <motion.div 
@@ -53,8 +73,15 @@ export default function ProfileView() {
                         </h3>
                     </div>
                 </div>
-                
-                {user?.bonusBalance && user.bonusBalance > 0 && (
+
+                <div className="flex items-center gap-3">
+                    <button 
+                        onClick={onShowWithdraw}
+                        className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all"
+                    >
+                        Solicitar Saque
+                    </button>
+                    {user?.bonusBalance && user.bonusBalance > 0 && (
                     <div className="bg-neon-purple/10 border border-neon-purple/30 rounded-2xl p-4 flex-1 md:max-w-[200px]">
                         <p className="text-neon-purple text-[8px] font-black uppercase tracking-widest mb-1">Saldo de Bônus</p>
                         <p className="text-xl font-display font-black text-white italic">
@@ -62,6 +89,7 @@ export default function ProfileView() {
                         </p>
                     </div>
                 )}
+                </div>
             </div>
         </div>
 
@@ -73,6 +101,30 @@ export default function ProfileView() {
           <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-2">Indicações</p>
           <h3 className="text-3xl font-black text-neon-purple italic font-display">{user?.referralCount}</h3>
         </div>
+
+        {withdrawals.length > 0 && (
+          <div className="col-span-1 md:col-span-2 glass-card p-6">
+            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white/40 mb-4 flex items-center gap-2">
+              <Clock size={14} className="text-neon-blue" />
+              Histórico de Saques
+            </h3>
+            <div className="space-y-3">
+              {withdrawals.map((w) => (
+                <div key={w.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-white tracking-tight">R$ {w.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    <span className="text-[9px] text-white/20 uppercase font-black">{new Date(w.createdAt?.seconds * 1000).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {w.status === 'pending' && <span className="bg-yellow-500/10 text-yellow-500 text-[8px] font-black uppercase px-2 py-1 rounded-md border border-yellow-500/20">Processando</span>}
+                    {w.status === 'approved' && <span className="bg-neon-green/10 text-neon-green text-[8px] font-black uppercase px-2 py-1 rounded-md border border-neon-green/20 flex items-center gap-1"><CheckCircle2 size={10} /> Sucesso</span>}
+                    {w.status === 'rejected' && <span className="bg-red-500/10 text-red-500 text-[8px] font-black uppercase px-2 py-1 rounded-md border border-red-500/20 flex items-center gap-1"><XCircle size={10} /> Recusado</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </motion.div>
   );

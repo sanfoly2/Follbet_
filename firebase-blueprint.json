@@ -33,12 +33,31 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "ip", "timestamp"]
+    },
+    "Withdrawal": {
+      "title": "Withdrawal Request",
+      "description": "Request for balance withdrawal",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "email": { "type": "string" },
+        "amount": { "type": "number" },
+        "cpf": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "email", "amount", "cpf", "status", "createdAt", "updatedAt"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "User",
       "description": "User private profile"
+    },
+    "/withdrawals/{withdrawalId}": {
+      "schema": "Withdrawal",
+      "description": "Pending and processed withdrawal requests"
     },
     "/ip_logs/{logId}": {
       "schema": "IpLog",

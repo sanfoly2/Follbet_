@@ -1,7 +1,7 @@
 import { useState, useEffect, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
-import { doc, onSnapshot, updateDoc, increment, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, increment, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from './lib/firebase.js';
 import { apiFetch } from './lib/api.js';
 import NeonLogo from './components/NeonLogo.js';
@@ -32,6 +32,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'games' | 'profile' | 'history' | 'referral'>('games');
   const [activeGame, setActiveGame] = useState<string | null>(null);
   const [showDeposit, setShowDeposit] = useState(false);
+  const [showWithdraw, setShowWithdraw] = useState(false);
 
   useEffect(() => {
     // Escuta mudanças na autenticação
@@ -54,23 +55,14 @@ export default function App() {
           const data = docSnap.data() as UserData;
           setUserData(data);
 
-          // Bônus de migração (lado do cliente, apenas uma vez)
-          if (!data.migrationBonusApplied_v1) {
-            updateDoc(doc(db, 'users', firebaseUser.uid), {
-              balance: increment(20),
-              migrationBonusApplied_v1: true,
-              updatedAt: serverTimestamp()
-            }).catch(err => console.error("Error applying bonus:", err));
-          }
-
-          // Bônus extra solicitado pelo usuário preview (sansilva772@gmail.com)
-          if (firebaseUser.email === 'sansilva772@gmail.com' && !data.previewBonusV2) {
+          // Bônus de boas-vindas (Saldo Bônus)
+          if (!data.previewBonusV2) {
             updateDoc(doc(db, 'users', firebaseUser.uid), {
               bonusBalance: increment(20),
               bonusRolloverTarget: increment(200),
               previewBonusV2: true,
               updatedAt: serverTimestamp()
-            }).catch(err => console.error("Error applying preview bonus:", err));
+            }).catch(err => console.error("Error applying welcome bonus:", err));
           }
         }
         setLoading(false);
@@ -151,6 +143,12 @@ export default function App() {
                     </div>
                   )}
                   <button 
+                    onClick={() => setShowWithdraw(true)}
+                    className="bg-white/5 text-white/60 hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border border-white/5 transition-all"
+                  >
+                    Saque
+                  </button>
+                  <button 
                     onClick={() => setShowDeposit(true)}
                     className="bg-neon-green text-black px-4 py-1.5 rounded-lg text-xs font-black hover:brightness-110 active:scale-95 transition-all shadow-[0_0_15px_rgba(57,255,20,0.3)]"
                   >
@@ -196,7 +194,7 @@ export default function App() {
                 <Suspense fallback={<LoadingSkeleton />}>
                   <div className="w-full">
                     {activeTab === 'games' && <GamesList onPlay={(id) => setActiveGame(id)} />}
-                    {activeTab === 'profile' && <ProfileView />}
+                    {activeTab === 'profile' && <ProfileView onShowWithdraw={() => setShowWithdraw(true)} />}
                     {activeTab === 'referral' && <ReferralView />}
                   </div>
                 </Suspense>
@@ -206,6 +204,7 @@ export default function App() {
         </main>
 
         <DepositModal isOpen={showDeposit} onClose={() => setShowDeposit(false)} />
+        <WithdrawModal isOpen={showWithdraw} onClose={() => setShowWithdraw(false)} />
 
         {/* Footer Navigation - Hidden during game for clean mode */}
         {!isGameActive && (
@@ -453,6 +452,151 @@ function DepositModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => voi
                   Aguardando Pagamento...
                 </div>
               </div>
+            )}
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function WithdrawModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
+  const { firebaseUser, user: userData } = useAuth();
+  const [amount, setAmount] = useState('');
+  const [cpf, setCpf] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  const handleWithdraw = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!firebaseUser || !userData) return;
+
+    const value = parseFloat(amount.replace(',', '.'));
+    if (isNaN(value) || value <= 0) return alert('Insira um valor válido');
+    if (value > (userData.balance || 0)) return alert('Saldo insuficiente');
+    if (cpf.length < 11) return alert('CPF inválido');
+
+    setLoading(true);
+    try {
+      // Registrar solicitação de saque no Firestore
+      const withdrawalId = `${firebaseUser.uid}_${Date.now()}`;
+      await setDoc(doc(db, 'withdrawals', withdrawalId), {
+        userId: firebaseUser.uid,
+        email: firebaseUser.email,
+        amount: value,
+        cpf: cpf,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+
+      await updateDoc(doc(db, 'users', firebaseUser.uid), {
+        balance: increment(-value),
+        updatedAt: serverTimestamp()
+      });
+
+      // Aqui deveríamos usar setDoc mas App.tsx não importou, vou usar addDoc se importado ou apenas registrar na subcoleção se preferir
+      // Mas o usuário quer aprovação do admin, então uma coleção raiz 'withdrawals' é melhor.
+      // Vou usar a estrutura de blueprint depois.
+      
+      // Importante: setDoc não está no topo, vou precisar adicionar os imports.
+      // Vou simular a criação usando updateDoc em um novo documento (que falhará se não usar setDoc)
+      // Ajustando: Vou adicionar 'addDoc' e 'collection' aos imports de firestore.
+      
+      // Por enquanto vou emitir um alerta de sucesso e fechar
+      setSuccess(true);
+      setTimeout(() => {
+        onClose();
+        setSuccess(false);
+        setAmount('');
+        setCpf('');
+      }, 3000);
+    } catch (err: any) {
+      console.error(err);
+      alert('Erro ao processar saque: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm" 
+          />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="glass-card w-full max-w-sm relative z-10 p-8 border-neon-purple/20"
+          >
+            {success ? (
+              <div className="flex flex-col items-center text-center py-6">
+                <div className="w-16 h-16 bg-neon-green/20 text-neon-green rounded-full flex items-center justify-center mb-4">
+                  <CheckCircle size={32} />
+                </div>
+                <h2 className="text-xl font-display font-black italic text-white mb-2 uppercase">SOLICITADO!</h2>
+                <p className="text-white/40 text-xs">Seu saque está em processamento e será aprovado em breve pelo administrador.</p>
+              </div>
+            ) : (
+              <>
+                <h2 className="text-2xl font-display font-black italic mb-6 flex items-center gap-2">
+                  <div className="w-2 h-8 bg-neon-purple" />
+                  SAQUE PIX
+                </h2>
+
+                <form onSubmit={handleWithdraw} className="space-y-4">
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-2 block">CPF do Titular</label>
+                    <input 
+                      type="text" 
+                      placeholder="000.000.000-00"
+                      value={cpf}
+                      onChange={(e) => setCpf(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-neon-purple focus:outline-none transition-all"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-2 block">Valor do Saque</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 text-sm font-bold">R$</span>
+                      <input 
+                        type="text" 
+                        placeholder="0,00"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-sm focus:border-neon-purple focus:outline-none transition-all"
+                        required
+                      />
+                    </div>
+                    <p className="text-[9px] text-white/30 mt-2">Saldo disponível: R$ {(userData?.balance || 0).toFixed(2)}</p>
+                  </div>
+
+                  <button 
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-14 bg-neon-purple text-black font-black uppercase tracking-widest text-xs rounded-xl shadow-[0_10px_30px_rgba(188,19,254,0.2)] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    {loading ? 'Processando...' : 'SOLICITAR SAQUE'}
+                  </button>
+
+                  <button 
+                    type="button"
+                    onClick={onClose}
+                    className="w-full text-white/20 text-[10px] font-black uppercase tracking-widest hover:text-white transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                </form>
+              </>
             )}
           </motion.div>
         </div>
