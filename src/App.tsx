@@ -64,7 +64,8 @@ export default function App() {
     };
   }, []);
 
-  const isAdmin = firebaseUser?.email === 'sansilva772@gmail.com';
+  const adminEmails = ['sansilva772@gmail.com', 'folysan724@gmail.com'];
+  const isAdmin = !!(firebaseUser?.email && adminEmails.includes(firebaseUser.email));
 
   useEffect(() => {
     if (firebaseUser) {
