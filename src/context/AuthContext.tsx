@@ -24,6 +24,7 @@ export interface AuthContextType {
   firebaseUser: FirebaseUser | null;
   loading: boolean;
   logout: () => void;
+  updateBalance: (amount: number) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);

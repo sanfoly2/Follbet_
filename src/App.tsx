@@ -84,6 +84,27 @@ export default function App() {
 
   const logout = () => signOut(auth);
 
+  const updateBalance = async (amount: number) => {
+    if (!firebaseUser || !userData) return;
+
+    const currentBalance = userData.balance || 0;
+    const newBalance = Math.round((currentBalance + amount) * 100) / 100;
+
+    if (newBalance < 0) {
+      throw new Error('Saldo insuficiente');
+    }
+
+    try {
+      await updateDoc(doc(db, 'users', firebaseUser.uid), {
+        balance: newBalance,
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error("Error updating balance:", error);
+      throw error;
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-[100dvh] bg-dark-bg flex flex-col items-center justify-center p-6 overflow-hidden">
@@ -99,7 +120,7 @@ export default function App() {
   }
 
   return (
-    <AuthContext.Provider value={{ user: userData, firebaseUser, loading, logout }}>
+    <AuthContext.Provider value={{ user: userData, firebaseUser, loading, logout, updateBalance }}>
       <div className="min-h-screen pb-32 text-white relative isolate">
         {/* Advanced Background Atmosphere */}
         <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden">

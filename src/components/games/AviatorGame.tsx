@@ -11,7 +11,7 @@ interface GameHistory {
 }
 
 const AviatorGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const { user } = useAuth();
+  const { user, updateBalance } = useAuth();
   const [betAmount, setBetAmount] = useState<number>(10);
   const [autoCashout, setAutoCashout] = useState<number>(0);
   const [gameState, setGameState] = useState<'betting' | 'waiting' | 'running' | 'crashed' | 'won'>('betting');
@@ -120,20 +120,22 @@ const AviatorGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     }
 
     setIsBonusRound(useBonus);
-    setHasBet(true);
 
     try {
-      const updateObj: any = { updatedAt: serverTimestamp() };
       if (useBonus) {
-        updateObj.bonusBalance = increment(-betAmount);
-        updateObj.bonusRolloverProgress = increment(betAmount);
+        const updateObj: any = { 
+          updatedAt: serverTimestamp(),
+          bonusBalance: increment(-betAmount),
+          bonusRolloverProgress: increment(betAmount)
+        };
+        await updateDoc(doc(firestore, 'users', user.userId), updateObj);
       } else {
-        updateObj.balance = increment(-betAmount);
+        await updateBalance(-betAmount);
       }
-      await updateDoc(doc(firestore, 'users', user.userId), updateObj);
-    } catch (err) {
+      setHasBet(true);
+    } catch (err: any) {
       console.error(err);
-      alert('Erro ao realizar aposta');
+      alert(err.message || 'Erro ao realizar aposta');
     }
   };
 
@@ -148,13 +150,15 @@ const AviatorGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     setHistory(prev => [{ multiplier, time: new Date().toLocaleTimeString() }, ...prev].slice(0, 5));
 
     try {
-      const updateObj: any = { updatedAt: serverTimestamp() };
       if (isBonusRound) {
-        updateObj.bonusBalance = increment(win);
+        const updateObj: any = { 
+          updatedAt: serverTimestamp(),
+          bonusBalance: increment(win)
+        };
+        await updateDoc(doc(firestore, 'users', user!.userId), updateObj);
       } else {
-        updateObj.balance = increment(win);
+        await updateBalance(win);
       }
-      await updateDoc(doc(firestore, 'users', user!.userId), updateObj);
     } catch (err) {
       console.error(err);
     }
