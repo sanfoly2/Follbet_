@@ -85,25 +85,29 @@ const AuthPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background Decor */}
-      <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-neon-blue/10 rounded-full blur-[120px]" />
-      <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-neon-purple/10 rounded-full blur-[120px]" />
+    <div className="min-h-screen flex items-center justify-center p-4 relative bg-dark-bg selection:bg-neon-blue selection:text-black">
+      {/* Immersive Auth Atmosphere */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-neon-blue/10 rounded-full blur-[140px] animate-pulse" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-neon-green/5 rounded-full blur-[140px] animate-pulse [animation-delay:2s]" />
+      </div>
 
       <motion.div 
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-md"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-md relative z-10"
       >
-        <div className="text-center mb-8">
+        <div className="text-center mb-12 relative">
           <NeonLogo size="lg" />
-          <p className="text-white/50 mt-2 font-display uppercase tracking-widest text-xs">
-            A Nova Era das Apostas
-          </p>
+          <motion.div 
+            initial={{ width: 0 }}
+            animate={{ width: '100px' }}
+            className="h-1 bg-neon-green mx-auto mt-4 rounded-full shadow-[0_0_10px_#39ff14]"
+          />
         </div>
 
-        <div className="glass-card relative">
-          <div className="flex mb-8 bg-white/5 p-1 rounded-xl">
+        <div className="glass-card !bg-white/[0.02] border-white/5 relative overflow-hidden group">
+          <div className="flex mb-10 bg-black/40 p-1.5 rounded-2xl border border-white/5 shadow-inner">
             <button 
               onClick={() => setIsLogin(true)}
               className={`flex-1 py-2 rounded-lg font-bold transition-all ${isLogin ? 'bg-neon-blue text-black shadow-[0_0_15px_#00f3ff]' : 'text-white/50'}`}

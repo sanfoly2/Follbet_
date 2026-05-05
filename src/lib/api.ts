@@ -28,18 +28,30 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
       },
     });
 
+    const contentType = response.headers.get("content-type");
+    const isJson = contentType && contentType.includes("application/json");
+
     if (!response.ok) {
       let errorMessage = `Erro na requisição ${path} (Status: ${response.status})`;
       try {
-        const errorData = await response.json();
-        errorMessage = errorData.error || errorData.message || errorMessage;
+        if (isJson) {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } else {
+          const text = await response.text();
+          errorMessage = text || errorMessage;
+        }
       } catch (e) {
-        // Not a JSON response
+        // Fallback if parsing fails
       }
       throw new Error(errorMessage);
     }
 
-    return response.json();
+    if (isJson) {
+      return response.json();
+    } else {
+      return response.text();
+    }
   } catch (error: any) {
     console.error("Fetch Error:", error);
     if (error.message.includes("Failed to fetch")) {

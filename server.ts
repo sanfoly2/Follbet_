@@ -17,35 +17,33 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Middleware para JSON
+  // Configuração para permitir CORS e JSON
   app.use(express.json());
   app.use(cookieParser());
 
-  // Rota do Pix (Directly at /pix as requested)
-  app.use('/pix', pixRoutes);
-  
-  // Auth and Game Routes
-  app.use('/auth', authRoutes);
-  app.use('/api/games', gameRoutes);
-  app.use('/', authRoutes); // Fallback for root auth routes
-
-  // Proxy route for Pix (optional fallback if external backend is still needed)
+  // Proxy route for ALL external calls to Render (Pix, Check Payment, etc)
+  // This avoids CORS issues while keeping the logic on the existing Render backend
   app.use('/api/external', async (req, res) => {
     // req.url contains the path after /api/external
+    // If the call is /api/external/pix, req.url is /pix
     const targetUrl = `https://follbet.onrender.com${req.url}`;
-    console.log(`Proxying ${req.method} request to: ${targetUrl}`);
     
     try {
-      const response = await fetch(targetUrl, {
+      const fetchOptions: RequestInit = {
         method: req.method,
         headers: {
           'Content-Type': 'application/json',
-          // Omit host header to avoid issues with Render
-        },
-        body: ['POST', 'PUT', 'PATCH'].includes(req.method) ? JSON.stringify(req.body) : undefined,
-      });
+          'Accept': 'application/json'
+        }
+      };
 
+      if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
+        fetchOptions.body = JSON.stringify(req.body);
+      }
+
+      const response = await fetch(targetUrl, fetchOptions);
       const contentType = response.headers.get('content-type');
+      
       if (contentType && contentType.includes('application/json')) {
         const data = await response.json();
         res.status(response.status).json(data);
@@ -58,6 +56,11 @@ async function startServer() {
       res.status(500).json({ error: 'Erro ao conectar ao servidor backend (Render)' });
     }
   });
+
+  // Auth and Game Routes (Local)
+  app.use('/auth', authRoutes);
+  app.use('/api/games', gameRoutes);
+  app.use('/', authRoutes);
 
   // Rota de saúde para o Render
   app.get('/health', (req, res) => {

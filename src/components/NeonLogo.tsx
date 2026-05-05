@@ -10,19 +10,23 @@ const NeonLogo: React.FC<{ size?: 'sm' | 'md' | 'lg' }> = ({ size = 'md' }) => {
 
   return (
     <motion.div 
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`font-display font-black tracking-tighter italic ${sizes[size]} flex items-center justify-center`}
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className={`font-display font-black tracking-tighter italic ${sizes[size]} flex items-center justify-center select-none shadow-neon-green/10`}
     >
-      <span className="text-white neon-text-blue">FOLL</span>
+      <span className="text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">FOLL</span>
       <span className="text-neon-green ml-2 neon-text-green">BET</span>
       <motion.div
         animate={{ 
-          opacity: [0.4, 1, 0.4],
-          scale: [1, 1.1, 1]
+          opacity: [0.6, 1, 0.6],
+          boxShadow: [
+            "0 0 10px #39ff14",
+            "0 0 25px #39ff14",
+            "0 0 10px #39ff14"
+          ]
         }}
-        transition={{ duration: 2, repeat: Infinity }}
-        className="ml-2 w-3 h-3 bg-neon-green rounded-full shadow-[0_0_10px_#39ff14]"
+        transition={{ duration: 1.5, repeat: Infinity }}
+        className="ml-2 w-3 h-3 bg-neon-green rounded-sm rotate-45"
       />
     </motion.div>
   );

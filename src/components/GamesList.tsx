@@ -27,29 +27,49 @@ export default function GamesList({ onPlay }: GamesListProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {games.map(game => (
-          <div 
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        {games.map((game, index) => (
+          <motion.div 
             key={game.id} 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
             onClick={() => onPlay(game.id)}
-            className="glass-card group cursor-pointer hover:neon-border-green transition-all relative overflow-hidden h-64"
+            className="glass-card group cursor-pointer border-white/5 hover:border-neon-green/30 transition-all relative overflow-hidden flex flex-col h-[320px]"
           >
-            <div className={`absolute top-0 right-0 w-32 h-32 bg-neon-${game.color}/5 rounded-full blur-3xl`} />
-            <div className="relative h-full flex flex-col justify-between">
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-neon-${game.color}/20 text-neon-${game.color}`}>
-                {game.icon}
+            {/* Glossy Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+            
+            {/* Animated Background Pulse */}
+            <div className={`absolute top-0 right-0 w-48 h-48 bg-neon-${game.color}/10 rounded-full blur-[80px] group-hover:scale-110 transition-transform duration-700`} />
+            
+            <div className="relative flex-1 flex flex-col justify-between z-10">
+              <div className="flex justify-between items-start">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center bg-neon-${game.color}/10 text-neon-${game.color} border border-neon-${game.color}/20 group-hover:scale-110 transition-transform`}>
+                  {game.icon}
+                </div>
+                <div className="bg-white/5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-white/40">
+                  Popular
+                </div>
               </div>
+              
               <div>
-                <h3 className="text-xl font-bold uppercase tracking-tight mb-1">{game.title}</h3>
-                <p className="text-white/40 text-xs font-bold uppercase tracking-widest">Multiplicador até 1000x</p>
+                <h3 className="text-2xl font-display font-black italic uppercase tracking-tight mb-2 group-hover:text-neon-green transition-colors">{game.title}</h3>
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 bg-neon-green rounded-full shadow-[0_0_8px_#39ff14]" />
+                  <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">Multiplicador até 1000x</p>
+                </div>
               </div>
-              <button 
-                className="neon-button-green w-full py-2 text-sm"
-              >
-                Jogar Agora
-              </button>
+
+              <div className="pt-4 border-t border-white/5">
+                <button 
+                  className="w-full h-12 rounded-xl flex items-center justify-center font-black uppercase tracking-widest text-xs bg-white/5 group-hover:bg-neon-green group-hover:text-black group-hover:shadow-[0_0_20px_rgba(57,255,20,0.4)] transition-all duration-300"
+                >
+                  Jogar Agora
+                </button>
+              </div>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
     </motion.div>

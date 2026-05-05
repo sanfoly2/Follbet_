@@ -7,7 +7,7 @@ import { Zap, TrendingUp, Wallet, ArrowLeft, Play, HandCoins } from 'lucide-reac
 
 const CrashGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const { user } = useAuth();
-  const [betAmount, setBetAmount] = useState<number>(10);
+  const [betAmount, setBetAmount] = useState<number>(1);
   const [autoCashout, setAutoCashout] = useState<number>(2.0);
   const [gameState, setGameState] = useState<'idle' | 'waiting' | 'running' | 'crashed' | 'won'>('idle');
   const [multiplier, setMultiplier] = useState<number>(1.0);
@@ -28,7 +28,14 @@ const CrashGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   };
 
   const startNextRound = async () => {
-    if (!user || user.balance < betAmount) {
+    if (!user) return;
+    
+    if (betAmount < 1) {
+      alert('Aposta mínima é de R$ 1,00');
+      return;
+    }
+
+    if (user.balance < betAmount) {
       alert('Saldo insuficiente!');
       return;
     }
@@ -193,7 +200,7 @@ const CrashGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           <div className="pt-4 border-t border-white/5">
             <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-white/40">
               <span>Seu Saldo</span>
-              <span className="text-neon-blue">R$ {user?.balance.toLocaleString()}</span>
+              <span className="text-neon-blue">R$ {(user?.balance || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
           </div>
         </div>

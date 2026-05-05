@@ -34,6 +34,7 @@ export default function App() {
   const [showDeposit, setShowDeposit] = useState(false);
 
   useEffect(() => {
+    // Escuta mudanças na autenticação
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       setFirebaseUser(user);
       if (!user) {
@@ -47,18 +48,28 @@ export default function App() {
 
   useEffect(() => {
     if (firebaseUser) {
-      setLoading(true);
+      // Usamos onSnapshot para dados em tempo real, mas garantimos que o loading só suma após o primeiro dado
       const unsubscribeData = onSnapshot(doc(db, 'users', firebaseUser.uid), (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data() as UserData;
           setUserData(data);
 
+          // Bônus de migração (lado do cliente, apenas uma vez)
           if (!data.migrationBonusApplied_v1) {
             updateDoc(doc(db, 'users', firebaseUser.uid), {
               balance: increment(20),
               migrationBonusApplied_v1: true,
               updatedAt: serverTimestamp()
-            }).catch(err => console.error("Error applying migration bonus:", err));
+            }).catch(err => console.error("Error applying bonus:", err));
+          }
+
+          // Bônus extra solicitado pelo usuário preview (sansilva772@gmail.com)
+          if (firebaseUser.email === 'sansilva772@gmail.com' && !data.previewBonusV1) {
+            updateDoc(doc(db, 'users', firebaseUser.uid), {
+              balance: increment(20),
+              previewBonusV1: true,
+              updatedAt: serverTimestamp()
+            }).catch(err => console.error("Error applying preview bonus:", err));
           }
         }
         setLoading(false);
@@ -90,19 +101,28 @@ export default function App() {
 
   return (
     <AuthContext.Provider value={{ user: userData, firebaseUser, loading, logout }}>
-      <div className="min-h-screen pb-24 text-white">
-        <header className="sticky top-0 z-50 bg-dark-bg/80 backdrop-blur-xl border-b border-white/5 p-4">
-          <div className="max-w-6xl mx-auto flex items-center justify-between">
+      <div className="min-h-screen pb-32 text-white relative isolate">
+        {/* Advanced Background Atmosphere */}
+        <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden">
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-neon-green/30 to-transparent" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-gradient-radial from-neon-green/5 via-transparent to-transparent opacity-40" />
+          <div className="absolute -top-48 -left-48 w-[600px] h-[600px] bg-neon-blue/10 blur-[140px] rounded-full animate-pulse" />
+          <div className="absolute top-[20%] -right-48 w-[500px] h-[500px] bg-neon-purple/5 blur-[120px] rounded-full animate-pulse [animation-delay:1s]" />
+          <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-dark-bg to-transparent" />
+        </div>
+
+        <header className="sticky top-0 z-50 bg-dark-bg/60 backdrop-blur-2xl border-b border-white/5 p-4 md:px-8">
+          <div className="max-w-[1400px] mx-auto flex items-center justify-between">
             <NeonLogo size="sm" />
             <div className="flex items-center gap-4">
-              <div className="bg-white/5 px-4 py-1 rounded-xl flex items-center gap-3 border border-white/10 pr-1">
+              <div className="bg-white/5 px-4 py-1 rounded-xl flex items-center gap-3 border border-white/10 pr-1 shadow-inner">
                 <Wallet className="w-4 h-4 text-neon-blue" />
-                <span className="font-display font-bold text-sm tracking-tight">
-                  R$ {userData?.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                <span className="font-display font-medium text-sm tracking-tight">
+                  R$ {(userData?.balance || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </span>
                 <button 
                   onClick={() => setShowDeposit(true)}
-                  className="bg-neon-green text-black px-3 py-1.5 rounded-lg text-xs font-black hover:scale-105 transition-transform"
+                  className="bg-neon-green text-black px-4 py-1.5 rounded-lg text-xs font-black hover:brightness-110 active:scale-95 transition-all shadow-[0_0_15px_rgba(57,255,20,0.3)]"
                 >
                   PIX
                 </button>
@@ -111,20 +131,40 @@ export default function App() {
           </div>
         </header>
 
-        <main className="max-w-6xl mx-auto p-4 md:p-8">
-          <Suspense fallback={<LoadingSkeleton />}>
-            <AnimatePresence mode="wait">
-              {activeGame === 'crash' ? (
-                <CrashGame key="crash" onBack={() => setActiveGame(null)} />
-              ) : (
-                <>
-                  {activeTab === 'games' && <GamesList key="games" onPlay={(id) => setActiveGame(id)} />}
-                  {activeTab === 'profile' && <ProfileView key="profile" />}
-                  {activeTab === 'referral' && <ReferralView key="referral" />}
-                </>
-              )}
-            </AnimatePresence>
-          </Suspense>
+        <main className="max-w-[1400px] mx-auto p-4 md:p-8 lg:p-12 relative z-10 flex-1">
+          <AnimatePresence mode="wait">
+            {activeGame === 'crash' ? (
+              <motion.div
+                key="crash-wrapper"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.02 }}
+                transition={{ duration: 0.2 }}
+                className="w-full flex-1"
+              >
+                <Suspense fallback={<LoadingSkeleton />}>
+                  <CrashGame onBack={() => setActiveGame(null)} />
+                </Suspense>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="main-content"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="w-full flex-1"
+              >
+                <Suspense fallback={<LoadingSkeleton />}>
+                  <div className="w-full">
+                    {activeTab === 'games' && <GamesList onPlay={(id) => setActiveGame(id)} />}
+                    {activeTab === 'profile' && <ProfileView />}
+                    {activeTab === 'referral' && <ReferralView />}
+                  </div>
+                </Suspense>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </main>
 
         <DepositModal isOpen={showDeposit} onClose={() => setShowDeposit(false)} />
@@ -147,12 +187,31 @@ export default function App() {
 
 function LoadingSkeleton() {
   return (
-    <div className="flex flex-col items-center gap-4">
-      <NeonLogo size="md" />
-      <div className="flex gap-1">
-        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="w-2 h-2 bg-neon-blue rounded-full" />
-        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-2 h-2 bg-neon-purple rounded-full" />
-        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-2 h-2 bg-neon-green rounded-full" />
+    <div className="flex flex-col items-center gap-12 py-12">
+      <div className="relative w-24 h-24 flex items-center justify-center">
+        <motion.div 
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="absolute inset-0 border-2 border-neon-green/5 border-t-neon-green rounded-full shadow-[0_0_20px_rgba(57,255,20,0.3)]"
+        />
+        <motion.div 
+          animate={{ rotate: [45, 225, 405], scale: [1, 0.8, 1] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          className="w-10 h-10 bg-neon-green rounded-lg shadow-[0_0_20px_rgba(57,255,20,0.5)]"
+        />
+      </div>
+      <div className="flex flex-col items-center gap-4">
+        <NeonLogo size="md" />
+        <div className="w-48 h-1 bg-white/5 rounded-full overflow-hidden">
+          <motion.div 
+            animate={{ x: [-200, 200] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            className="w-20 h-full bg-neon-green shadow-[0_0_10px_#39ff14]"
+          />
+        </div>
+        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 animate-pulse">
+          Sincronizando Sistema
+        </span>
       </div>
     </div>
   );
@@ -170,7 +229,8 @@ function DepositModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => voi
     if (paymentData?.payment_id && isOpen) {
       interval = setInterval(async () => {
         try {
-          const res = await apiFetch(`/check-payment/${paymentData.payment_id}`);
+          // Ajustado para o endpoint correto do seu backend no Render
+          const res = await apiFetch(`/pix/status/${paymentData.payment_id}`);
           if (res.status === 'approved') {
             clearInterval(interval);
             alert('Pagamento aprovado! Seu saldo será atualizado.');
@@ -188,24 +248,27 @@ function DepositModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => voi
     if (!firebaseUser) return;
     setLoading(true);
     try {
-      // Calling the Render backend to create PIX payment
-      const res = await apiFetch('/Pix', {
+      // Chamando o backend no Render via proxy /api/external para evitar CORS
+      // Ajustado para enviar 'amount' e 'email' conforme esperado pelo pix.ts
+      const res = await apiFetch('/pix', {
         method: 'POST',
         body: JSON.stringify({
-          transaction_amount: amount,
-          description: `Depósito Foll Bet - ${firebaseUser.email}`,
-          payer: {
-            email: firebaseUser.email,
-          },
-          external_reference: firebaseUser.uid
+          amount: amount,
+          email: firebaseUser.email,
         }),
       });
 
-      if (res.point_of_interaction?.transaction_data) {
+      // A resposta do Mercado Pago geralmente tem qr_code dentro de transaction_data
+      // ou o seu backend pode retornar de forma direta se estiver formatado
+      const qr_code = res.qr_code || res.point_of_interaction?.transaction_data?.qr_code;
+      const qr_code_base64 = res.qr_code_base64 || res.point_of_interaction?.transaction_data?.qr_code_base64;
+      const payment_id = res.payment_id || res.id;
+
+      if (qr_code) {
         setPaymentData({
-          qr_code: res.point_of_interaction.transaction_data.qr_code,
-          qr_code_base64: res.point_of_interaction.transaction_data.qr_code_base64,
-          payment_id: res.id
+          qr_code,
+          qr_code_base64,
+          payment_id: String(payment_id)
         });
       }
     } catch (err: any) {
@@ -319,8 +382,15 @@ function DepositModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => voi
                   </button>
                   
                   <button 
+                    onClick={onClose}
+                    className="w-full py-3 text-xs uppercase font-bold tracking-widest text-red-400 hover:text-red-300 transition-colors"
+                  >
+                    Fechar
+                  </button>
+                  
+                  <button 
                     onClick={() => setPaymentData(null)}
-                    className="w-full py-3 text-xs uppercase font-bold tracking-widest text-white/40 hover:text-white transition-colors"
+                    className="w-full py-2 text-[10px] uppercase font-bold tracking-widest text-white/20 hover:text-white transition-colors underline underline-offset-4"
                   >
                     Voltar para valores
                   </button>
@@ -343,15 +413,23 @@ function NavBtn({ active, onClick, icon, label }: { active: boolean, onClick: ()
   return (
     <button 
       onClick={onClick}
-      className={`flex flex-col items-center gap-1 p-3 rounded-xl transition-all relative ${active ? 'text-neon-blue' : 'text-white/40 hover:text-white/60'}`}
+      className={`flex flex-col items-center gap-1.5 p-3 px-6 rounded-2xl transition-all relative ${active ? 'text-neon-green' : 'text-white/30 hover:text-white/60 hover:bg-white/5'}`}
     >
-      {icon}
-      <span className="text-[10px] font-bold uppercase tracking-widest">{label}</span>
+      <div className={`transition-transform duration-300 ${active ? 'scale-110' : 'scale-100'}`}>
+        {icon}
+      </div>
+      <span className="text-[10px] font-black uppercase tracking-[0.2em]">{label}</span>
       {active && (
-        <motion.div 
-          layoutId="active-tab"
-          className="absolute inset-0 bg-neon-blue/10 rounded-xl"
-        />
+        <>
+          <motion.div 
+            layoutId="active-tab"
+            className="absolute inset-0 bg-neon-green/10 rounded-2xl border border-neon-green/20"
+          />
+          <motion.div 
+            layoutId="active-indicator"
+            className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-neon-green rounded-full shadow-[0_0_10px_#39ff14]"
+          />
+        </>
       )}
     </button>
   );
