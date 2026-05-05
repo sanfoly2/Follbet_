@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Zap, Dice5, Gamepad2, TrendingUp, Lock } from 'lucide-react';
+import { Zap, Dice5, Gamepad2, TrendingUp, Lock, Sparkles } from 'lucide-react';
 
 interface GamesListProps {
   onPlay: (id: string) => void;
@@ -46,6 +46,15 @@ export default function GamesList({ onPlay }: GamesListProps) {
       description: 'Abra o cofre e multiplique o seu ouro',
       bgGradient: 'from-[#059669] via-[#10b981] to-[#34d399]',
       accent: 'text-neon-green'
+    },
+    { 
+      id: 'gates-of-foll', 
+      title: 'Gates of Foll', 
+      color: 'gold', 
+      icon: <Sparkles />, 
+      description: 'O deus Foll abençoa quem ousa girar',
+      bgGradient: 'from-[#B8942E] via-[#D4AF37] to-[#E5C158]',
+      accent: 'text-yellow-500'
     }
   ];
 
