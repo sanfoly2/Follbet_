@@ -814,25 +814,24 @@ function WelcomeGiftModal({ isOpen, onClose }: { isOpen: boolean, onClose: () =>
   const { firebaseUser } = useAuth();
   const [isClaiming, setIsClaiming] = useState(false);
 
-  const handleClaim = async () => {
-    if (!firebaseUser) return;
-    setIsClaiming(true);
-    try {
-      await updateDoc(doc(db, 'users', firebaseUser.uid), {
-        bonusBalance: increment(20),
-        bonusRolloverTarget: increment(200),
-        bonusRolloverProgress: 0,
-        claimedWelcomeBonus: true,
-        previewBonusV3: true,
-        updatedAt: serverTimestamp()
-      });
-      onClose();
-    } catch (err) {
-      console.error(err);
-      alert('Erro ao resgatar recompensa');
-    } finally {
-      setIsClaiming(false);
-    }
+  const handleClaim = () => {
+    if (!firebaseUser || isClaiming) return;
+    
+    // Otimismo: Fecha o modal imediatamente para resposta instantânea
+    onClose();
+    
+    // Processa a atualização em segundo plano
+    updateDoc(doc(db, 'users', firebaseUser.uid), {
+      bonusBalance: increment(20),
+      bonusRolloverTarget: increment(200),
+      bonusRolloverProgress: 0,
+      claimedWelcomeBonus: true,
+      previewBonusV3: true,
+      updatedAt: serverTimestamp()
+    }).catch(err => {
+      console.error("Erro ao resgatar bônus em segundo plano:", err);
+      // Opcional: Notificar o usuário se falhou silenciosamente
+    });
   };
 
   return (
