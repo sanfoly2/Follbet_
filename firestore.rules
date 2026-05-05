@@ -45,6 +45,7 @@ service cloud.firestore {
         && incoming().updatedAt == request.time
         && (incoming().balance is number && incoming().balance >= 0))
         || isAdmin();
+      allow delete: if isAdmin();
     }
 
     match /settings/{settingId} {

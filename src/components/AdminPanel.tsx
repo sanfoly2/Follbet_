@@ -22,7 +22,8 @@ import {
   orderBy, 
   setDoc,
   serverTimestamp,
-  increment
+  increment,
+  deleteDoc
 } from 'firebase/firestore';
 
 export default function AdminPanel() {
@@ -146,6 +147,38 @@ export default function AdminPanel() {
       });
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleResetSystem = async () => {
+    const adminEmails = ['sansilva772@gmail.com', 'folysan724@gmail.com'];
+    const confirmed = confirm('ATENÇÃO: Isso excluirá TODOS os usuários exceto os administradores. Esta ação é irreversível. Deseja continuar?');
+    
+    if (!confirmed) return;
+
+    const secondConfirm = prompt('Para confirmar a exclusão de todos os jogadores, digite REINICIAR (em maiúsculas):');
+    if (secondConfirm !== 'REINICIAR') return;
+
+    setLoading(true);
+    try {
+      let count = 0;
+      // Filter out admins before deleting
+      const usersToDelete = users.filter(u => !adminEmails.includes(u.email));
+      
+      for (const u of usersToDelete) {
+        try {
+          await deleteDoc(doc(db, 'users', u.id));
+          count++;
+        } catch (e) {
+          console.error(`Erro ao deletar usuário ${u.email}:`, e);
+        }
+      }
+      alert(`${count} jogadores foram excluídos com sucesso. O sistema foi limpo.`);
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao reiniciar sistema.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -308,6 +341,30 @@ export default function AdminPanel() {
             <p className="text-xs uppercase font-black tracking-widest leading-none">Nenhum resultado</p>
           </div>
         )}
+      </div>
+
+      {/* Danger Zone */}
+      <div className="pt-10">
+        <div className="glass-card p-6 border-red-500/20 bg-red-500/5">
+           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-widest text-red-500 mb-1 flex items-center gap-2">
+                  <ShieldAlert size={16} />
+                  Zona de Perigo
+                </h3>
+                <p className="text-[10px] text-white/40 uppercase font-bold tracking-tight">
+                  Exclua todos os jogadores da base de dados para recomeçar o projeto.
+                </p>
+              </div>
+              <button 
+                onClick={handleResetSystem}
+                disabled={loading}
+                className="bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-red-500/20 disabled:opacity-50"
+              >
+                {loading ? 'Processando...' : 'Reiniciar Sistema'}
+              </button>
+           </div>
+        </div>
       </div>
     </div>
   );

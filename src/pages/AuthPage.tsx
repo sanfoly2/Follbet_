@@ -56,8 +56,8 @@ const AuthPage: React.FC = () => {
           referredBy: referralCode || null,
           referralCount: 0,
           referralBalance: 0,
-          bonusBalance: 20, // 20 Moedas de Bônus
-          bonusRolloverTarget: 200, // 20 * 10 (Rollover de 10x)
+          bonusBalance: 0,
+          bonusRolloverTarget: 0,
           bonusRolloverProgress: 0,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()

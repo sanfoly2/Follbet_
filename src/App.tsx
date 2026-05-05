@@ -96,19 +96,23 @@ export default function App() {
               updatedAt: serverTimestamp()
             }).catch(err => console.error("Error converting bonus to balance:", err));
           }
-        } else if (isAdmin) {
-          // Auto create admin document if missing
-          const defaultAdmin: UserData = {
+        } else {
+          // Auto create user document if missing (universal)
+          const defaultUser: UserData = {
             userId: firebaseUser.uid,
             email: firebaseUser.email || '',
-            balance: 1000,
-            vipLevel: 10,
+            balance: isAdmin ? 1000 : 0,
+            vipLevel: isAdmin ? 10 : 1,
             lastIp: '0.0.0.0',
-            referralCode: 'ADMIN',
-            referralCount: 0
+            referralCode: firebaseUser.uid.substring(0, 8).toUpperCase(),
+            referralCount: 0,
+            referralBalance: 0,
+            bonusBalance: 0,
+            bonusRolloverTarget: 0,
+            bonusRolloverProgress: 0
           };
           setDoc(doc(db, 'users', firebaseUser.uid), {
-             ...defaultAdmin,
+             ...defaultUser,
              createdAt: serverTimestamp(),
              updatedAt: serverTimestamp()
           });
