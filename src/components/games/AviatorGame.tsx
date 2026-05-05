@@ -206,19 +206,34 @@ const AviatorGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const draw = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, elapsed: number, currentMult: number) => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Parallax Stars Background
+    // Parallax Stars Background (Optimized & More Emotional)
     const time = Date.now() / 1000;
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-    for(let i = 0; i < 50; i++) {
-        // Horizontal speed increased for more 'emotion' and feel of movement
-        const x = (i * 137.5 - time * 50) % canvas.width;
-        const y = (i * 243.1 + Math.sin(time + i) * 20) % canvas.height;
-        const size = (i % 2) + 1;
+    for(let i = 0; i < 40; i++) {
+        const x = (i * 137.5 - time * (30 + i)) % canvas.width;
+        const y = (i * 243.1 + Math.sin(time + i) * 10) % canvas.height;
+        const size = (i % 2) + 0.5;
+        const alpha = 0.05 + Math.abs(Math.sin(time + i)) * 0.2;
+        ctx.fillStyle = `rgba(188, 19, 254, ${alpha})`;
         ctx.beginPath();
         const adjustedX = x < 0 ? canvas.width + x : x;
-        ctx.arc(adjustedX, y, size, 0, Math.PI * 2);
+        ctx.arc(adjustedX, y, size, 1, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.5})`;
+        ctx.beginPath();
+        ctx.arc(adjustedX + 1, y + 1, size / 2, 0, Math.PI * 2);
         ctx.fill();
     }
+
+    // Subtle Nebula Glow
+    const nebulaGrad = ctx.createRadialGradient(
+      canvas.width * 0.2, canvas.height * 0.2, 0,
+      canvas.width * 0.2, canvas.height * 0.2, canvas.width * 0.8
+    );
+    nebulaGrad.addColorStop(0, 'rgba(188, 19, 254, 0.04)');
+    nebulaGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = nebulaGrad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const margin = 50;
     const width = canvas.width - margin * 2;
