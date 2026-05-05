@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Zap, Dice5, Gamepad2, TrendingUp } from 'lucide-react';
+import { Zap, Dice5, Gamepad2, TrendingUp, Lock } from 'lucide-react';
 
 interface GamesListProps {
   onPlay: (id: string) => void;
@@ -37,6 +37,15 @@ export default function GamesList({ onPlay }: GamesListProps) {
       description: 'Voe alto e saque antes do crash',
       bgGradient: 'from-[#6366f1] via-[#a855f7] to-[#ec4899]',
       accent: 'text-neon-purple'
+    },
+    { 
+      id: 'lucky-vault', 
+      title: 'Lucky Vault', 
+      color: 'green', 
+      icon: <Lock />, 
+      description: 'Abra o cofre e multiplique o seu ouro',
+      bgGradient: 'from-[#059669] via-[#10b981] to-[#34d399]',
+      accent: 'text-neon-green'
     }
   ];
 
