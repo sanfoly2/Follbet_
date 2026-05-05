@@ -24,6 +24,7 @@ const GamesList = lazy(() => import('./components/GamesList.js'));
 const ProfileView = lazy(() => import('./components/ProfileView.js'));
 const ReferralView = lazy(() => import('./components/ReferralView.js'));
 const CrashGame = lazy(() => import('./components/games/CrashGame.js'));
+const AviatorGame = lazy(() => import('./components/games/AviatorGame.js'));
 
 export default function App() {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
@@ -137,7 +138,20 @@ export default function App() {
 
         <main className="max-w-[1400px] mx-auto p-4 md:p-8 lg:p-12 relative z-10 flex-1">
           <AnimatePresence mode="wait">
-            {activeGame === 'crash' ? (
+            {activeGame === 'aviator' ? (
+              <motion.div
+                key="aviator-wrapper"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.02 }}
+                transition={{ duration: 0.2 }}
+                className="w-full flex-1"
+              >
+                <Suspense fallback={<LoadingSkeleton />}>
+                  <AviatorGame onBack={() => setActiveGame(null)} />
+                </Suspense>
+              </motion.div>
+            ) : activeGame === 'crash' ? (
               <motion.div
                 key="crash-wrapper"
                 initial={{ opacity: 0, scale: 0.98 }}
