@@ -87,7 +87,15 @@ async function startServer() {
   } else {
     // Ambiente de Produção (Render / Linux)
     // Usamos process.cwd() para garantir que o caminho comece da raiz do projeto
-    const distPath = path.join(process.cwd(), 'dist');
+    let distPath = path.join(process.cwd(), 'dist');
+
+    // Se o processo já estiver rodando de dentro da pasta dist (comum em alguns setups de build),
+    // ajustamos o caminho para não duplicar /dist/dist
+    if (process.cwd().endsWith('dist') || __dirname.endsWith('dist')) {
+      distPath = process.cwd();
+    }
+    
+    console.log(`Verificando pasta dist em: ${distPath}`);
     
     // Serve os arquivos estáticos da pasta dist
     app.use(express.static(distPath));
@@ -96,8 +104,8 @@ async function startServer() {
     // Qualquer rota que não seja capturada pelas APIs acima servirá o index.html
     app.get('*', (req, res) => {
       // Evita loops infinitos ou servir index.html para chamadas de API que falharam
-      if (req.path.startsWith('/api')) {
-        return res.status(404).json({ error: 'API route not found' });
+      if (req.path.startsWith('/api') || req.path.startsWith('/auth')) {
+        return res.status(404).json({ error: 'Not found' });
       }
       res.sendFile(path.join(distPath, 'index.html'));
     });
