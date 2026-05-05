@@ -16,6 +16,7 @@ export interface UserData {
   referralCount?: number;
   migrationBonusApplied_v1?: boolean;
   previewBonusV1?: boolean;
+  previewBonusV2?: boolean;
 }
 
 export interface AuthContextType {

@@ -7,8 +7,7 @@ interface GamesListProps {
 
 export default function GamesList({ onPlay }: GamesListProps) {
   const games = [
-    { id: 'aviator', title: 'Aviator Pro', color: 'purple', icon: <Zap /> },
-    { id: 'crash', title: 'Crash Rocket', color: 'blue', icon: <TrendingUp /> },
+    { id: 'aviator', title: 'Aviator Pro', color: 'purple', icon: <TrendingUp /> },
     { id: 'double', title: 'Double Neon', color: 'purple', icon: <Dice5 /> },
     { id: 'slots', title: 'Ultra Slots', color: 'green', icon: <Gamepad2 /> },
   ];

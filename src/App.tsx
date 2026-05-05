@@ -23,7 +23,6 @@ import AuthPage from './pages/AuthPage.js';
 const GamesList = lazy(() => import('./components/GamesList.js'));
 const ProfileView = lazy(() => import('./components/ProfileView.js'));
 const ReferralView = lazy(() => import('./components/ReferralView.js'));
-const CrashGame = lazy(() => import('./components/games/CrashGame.js'));
 const AviatorGame = lazy(() => import('./components/games/AviatorGame.js'));
 
 export default function App() {
@@ -65,10 +64,11 @@ export default function App() {
           }
 
           // Bônus extra solicitado pelo usuário preview (sansilva772@gmail.com)
-          if (firebaseUser.email === 'sansilva772@gmail.com' && !data.previewBonusV1) {
+          if (firebaseUser.email === 'sansilva772@gmail.com' && !data.previewBonusV2) {
             updateDoc(doc(db, 'users', firebaseUser.uid), {
-              balance: increment(20),
-              previewBonusV1: true,
+              bonusBalance: increment(20),
+              bonusRolloverTarget: increment(200),
+              previewBonusV2: true,
               updatedAt: serverTimestamp()
             }).catch(err => console.error("Error applying preview bonus:", err));
           }
@@ -92,6 +92,8 @@ export default function App() {
     );
   }
 
+  const isGameActive = activeGame !== null;
+
   if (!firebaseUser) {
     return <AuthPage />;
   }
@@ -108,60 +110,57 @@ export default function App() {
           <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-dark-bg to-transparent" />
         </div>
 
-        <header className="sticky top-0 z-50 bg-dark-bg/60 backdrop-blur-2xl border-b border-white/5 p-4 md:px-8">
-          <div className="max-w-[1400px] mx-auto flex items-center justify-between">
-            <NeonLogo size="sm" />
-            <div className="flex items-center gap-4">
-              <div className="bg-white/5 px-4 py-1 rounded-xl flex items-center gap-3 border border-white/10 pr-1 shadow-inner">
-                <Wallet className="w-4 h-4 text-neon-blue" />
-                <span className="font-display font-medium text-sm tracking-tight">
-                  R$ {(userData?.balance || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </span>
-                {userData?.bonusBalance && userData.bonusBalance > 0 && (
-                  <div className="flex flex-col items-end border-l border-white/10 pl-3">
-                    <span className="text-[8px] uppercase font-bold text-white/40 leading-none mb-0.5">Bônus</span>
-                    <span className="text-neon-purple font-display font-bold text-xs">
-                      R$ {userData.bonusBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                )}
-                <button 
-                  onClick={() => setShowDeposit(true)}
-                  className="bg-neon-green text-black px-4 py-1.5 rounded-lg text-xs font-black hover:brightness-110 active:scale-95 transition-all shadow-[0_0_15px_rgba(57,255,20,0.3)]"
-                >
-                  PIX
-                </button>
+        {/* Header - Hidden during game for clean mode */}
+        {!isGameActive && (
+          <header className="sticky top-0 z-50 bg-dark-bg/60 backdrop-blur-2xl border-b border-white/5 p-4 md:px-8">
+            <div className="max-w-[1400px] mx-auto flex items-center justify-between">
+              <NeonLogo size="sm" />
+              <div className="flex items-center gap-4">
+                <div className="bg-white/5 px-4 py-1 rounded-xl flex items-center gap-3 border border-white/10 pr-1 shadow-inner">
+                  <Wallet className="w-4 h-4 text-neon-blue" />
+                  <span className="font-display font-medium text-sm tracking-tight">
+                    R$ {(userData?.balance || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </span>
+                  {userData?.bonusBalance && userData.bonusBalance > 0 && (
+                    <div className="flex flex-col items-end border-l border-white/10 pl-3">
+                      <span className="text-[8px] uppercase font-bold text-white/40 leading-none mb-0.5">Bônus</span>
+                      <span className="text-neon-purple font-display font-bold text-xs">
+                        R$ {userData.bonusBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  )}
+                  <button 
+                    onClick={() => setShowDeposit(true)}
+                    className="bg-neon-green text-black px-4 py-1.5 rounded-lg text-xs font-black hover:brightness-110 active:scale-95 transition-all shadow-[0_0_15px_rgba(57,255,20,0.3)]"
+                  >
+                    PIX
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        </header>
+          </header>
+        )}
 
-        <main className="max-w-[1400px] mx-auto p-4 md:p-8 lg:p-12 relative z-10 flex-1">
+        <main className={`max-w-[1400px] mx-auto relative z-10 flex-1 ${!isGameActive ? 'p-4 md:p-8 lg:p-12' : 'p-0'}`}>
           <AnimatePresence mode="wait">
             {activeGame === 'aviator' ? (
               <motion.div
                 key="aviator-wrapper"
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 1.02 }}
-                transition={{ duration: 0.2 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 className="w-full flex-1"
               >
+                <div className="sticky top-0 z-[60] bg-dark-bg/80 backdrop-blur-xl border-b border-white/5 p-4 flex items-center justify-between lg:hidden mb-4 rounded-xl mx-4 mt-4">
+                  <div className="flex items-center gap-3 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
+                    <Wallet size={14} className="text-neon-blue" />
+                    <span className="text-sm font-bold">R$ {(userData?.balance || 0).toFixed(2)}</span>
+                  </div>
+                  <button onClick={() => setActiveGame(null)} className="text-white/40 text-xs font-black uppercase tracking-widest">Sair</button>
+                </div>
+
                 <Suspense fallback={<LoadingSkeleton />}>
                   <AviatorGame onBack={() => setActiveGame(null)} />
-                </Suspense>
-              </motion.div>
-            ) : activeGame === 'crash' ? (
-              <motion.div
-                key="crash-wrapper"
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 1.02 }}
-                transition={{ duration: 0.2 }}
-                className="w-full flex-1"
-              >
-                <Suspense fallback={<LoadingSkeleton />}>
-                  <CrashGame onBack={() => setActiveGame(null)} />
                 </Suspense>
               </motion.div>
             ) : (
@@ -187,17 +186,20 @@ export default function App() {
 
         <DepositModal isOpen={showDeposit} onClose={() => setShowDeposit(false)} />
 
-        <nav className="fixed bottom-0 left-0 right-0 z-50 p-4 pb-8 md:pb-4 flex justify-center pointer-events-none">
-          <div className="bg-black/60 backdrop-blur-2xl border border-white/10 p-2 rounded-2xl flex gap-1 pointer-events-auto shadow-2xl">
-            <NavBtn active={activeTab === 'games'} onClick={() => setActiveTab('games')} icon={<Dice5 />} label="Jogos" />
-            <NavBtn active={activeTab === 'referral'} onClick={() => setActiveTab('referral')} icon={<Handshake />} label="Indique" />
-            <NavBtn active={activeTab === 'profile'} onClick={() => setActiveTab('profile')} icon={<UserIcon />} label="Perfil" />
-            <div className="w-px h-8 bg-white/10 mx-1 my-auto" />
-            <button onClick={logout} className="p-3 text-red-500 hover:bg-red-500/10 rounded-xl transition-all">
-              <LogOut size={20} />
-            </button>
-          </div>
-        </nav>
+        {/* Footer Navigation - Hidden during game for clean mode */}
+        {!isGameActive && (
+          <nav className="fixed bottom-0 left-0 right-0 z-50 p-4 pb-8 md:pb-4 flex justify-center pointer-events-none">
+            <div className="bg-black/60 backdrop-blur-2xl border border-white/10 p-2 rounded-2xl flex gap-1 pointer-events-auto shadow-2xl">
+              <NavBtn active={activeTab === 'games'} onClick={() => setActiveTab('games')} icon={<Dice5 />} label="Jogos" />
+              <NavBtn active={activeTab === 'referral'} onClick={() => setActiveTab('referral')} icon={<Handshake />} label="Indique" />
+              <NavBtn active={activeTab === 'profile'} onClick={() => setActiveTab('profile')} icon={<UserIcon />} label="Perfil" />
+              <div className="w-px h-8 bg-white/10 mx-1 my-auto" />
+              <button onClick={logout} className="p-3 text-red-500 hover:bg-red-500/10 rounded-xl transition-all">
+                <LogOut size={20} />
+              </button>
+            </div>
+          </nav>
+        )}
       </div>
     </AuthContext.Provider>
   );

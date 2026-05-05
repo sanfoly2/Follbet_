@@ -49,16 +49,15 @@ const AuthPage: React.FC = () => {
         await setDoc(doc(db, 'users', user.uid), {
           userId: user.uid,
           email: user.email,
-          balance: 20,
-          migrationBonusApplied_v1: true,
+          balance: 0,
           vipLevel: 1,
           lastIp: clientIp,
           referralCode: user.uid.substring(0, 8).toUpperCase(),
           referredBy: referralCode || null,
           referralCount: 0,
           referralBalance: 0,
-          bonusBalance: 0,
-          bonusRolloverTarget: 0,
+          bonusBalance: 20, // 20 Moedas de Bônus
+          bonusRolloverTarget: 200, // 20 * 10 (Rollover de 10x)
           bonusRolloverProgress: 0,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
