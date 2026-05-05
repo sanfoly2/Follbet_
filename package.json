@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build",
+    "build": "vite build && tsc",
     "preview": "vite preview",
-    "start": "node server.ts",
+    "start": "node dist/server.js",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
   },
