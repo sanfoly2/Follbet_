@@ -56,6 +56,10 @@ const AuthPage: React.FC = () => {
           referralCode: user.uid.substring(0, 8).toUpperCase(),
           referredBy: referralCode || null,
           referralCount: 0,
+          referralBalance: 0,
+          bonusBalance: 0,
+          bonusRolloverTarget: 0,
+          bonusRolloverProgress: 0,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });

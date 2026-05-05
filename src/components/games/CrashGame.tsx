@@ -15,11 +15,31 @@ const CrashGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [winAmount, setWinAmount] = useState<number>(0);
   const [history, setHistory] = useState<number[]>([]);
   
+  const [isBonusRound, setIsBonusRound] = useState(false);
+  
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
 
+  // Check for rollover completion
+  useEffect(() => {
+    if (user && user.bonusBalance && user.bonusBalance > 0 && user.bonusRolloverTarget && user.bonusRolloverTarget > 0) {
+      if ((user.bonusRolloverProgress || 0) >= user.bonusRolloverTarget) {
+        // Rollover met! Convert bonus to real balance
+        const amount = user.bonusBalance;
+        updateDoc(doc(firestore, 'users', user.userId), {
+          balance: increment(amount),
+          bonusBalance: 0,
+          bonusRolloverTarget: 0,
+          bonusRolloverProgress: 0,
+          updatedAt: serverTimestamp()
+        }).then(() => {
+          alert(`Parabéns! Você completou o rollover e R$ ${amount.toLocaleString('pt-BR')} de bônus foram convertidos em saldo real!`);
+        }).catch(err => console.error("Erro ao converter bônus:", err));
+      }
+    }
+  }, [user?.bonusRolloverProgress, user?.bonusRolloverTarget, user?.bonusBalance]);
+
   // Generate a random crash point (Simulation of server-side logic)
-  // In a production environment, this would come from your Render backend
   const generateCrashPoint = () => {
     const e = 2 ** 32;
     const h = crypto.getRandomValues(new Uint32Array(1))[0];
@@ -35,7 +55,12 @@ const CrashGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       return;
     }
 
-    if (user.balance < betAmount) {
+    let useBonus = false;
+    if (user.balance >= betAmount) {
+      useBonus = false;
+    } else if ((user.bonusBalance || 0) >= betAmount) {
+      useBonus = true;
+    } else {
       alert('Saldo insuficiente!');
       return;
     }
@@ -43,20 +68,26 @@ const CrashGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     setGameState('waiting');
     setMultiplier(1.0);
     setWinAmount(0);
+    setIsBonusRound(useBonus);
 
     // 1. Deduct balance in Firestore
     try {
-      await updateDoc(doc(firestore, 'users', user.userId), {
-        balance: increment(-betAmount),
-        updatedAt: serverTimestamp()
-      });
+      const updateObj: any = { updatedAt: serverTimestamp() };
+      if (useBonus) {
+        updateObj.bonusBalance = increment(-betAmount);
+        updateObj.bonusRolloverProgress = increment(betAmount);
+      } else {
+        updateObj.balance = increment(-betAmount);
+      }
+
+      await updateDoc(doc(firestore, 'users', user.userId), updateObj);
     } catch (err) {
       console.error("Erro ao debitar aposta:", err);
       setGameState('idle');
       return;
     }
 
-    // 2. Simulate API processing time (Waiting for next round)
+    // 2. Simulate API processing time
     setTimeout(() => {
       const targetCrash = generateCrashPoint();
       setCrashPoint(targetCrash);
@@ -70,7 +101,6 @@ const CrashGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const runGameLoop = (target: number) => {
     const tick = () => {
       const elapsed = (Date.now() - startTimeRef.current) / 1000;
-      // Exponential growth curve: 1.06 ^ seconds
       const currentMult = Math.pow(1.06, elapsed * 10);
       
       if (currentMult >= target) {
@@ -82,7 +112,6 @@ const CrashGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
       setMultiplier(currentMult);
 
-      // Auto-cashout logic
       if (autoCashout > 1 && currentMult >= autoCashout) {
         handleCashout(currentMult);
         return;
@@ -106,10 +135,14 @@ const CrashGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
     // Update balance in Firestore
     try {
-      await updateDoc(doc(firestore, 'users', user!.userId), {
-        balance: increment(profit),
-        updatedAt: serverTimestamp()
-      });
+      const updateObj: any = { updatedAt: serverTimestamp() };
+      if (isBonusRound) {
+        updateObj.bonusBalance = increment(profit);
+      } else {
+        updateObj.balance = increment(profit);
+      }
+
+      await updateDoc(doc(firestore, 'users', user!.userId), updateObj);
     } catch (err) {
       console.error("Erro ao creditar prêmio:", err);
     }
@@ -127,12 +160,30 @@ const CrashGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         <button onClick={onBack} className="p-2 text-white/50 hover:text-white transition-colors">
           <ArrowLeft />
         </button>
-        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-          {history.map((h, i) => (
-            <span key={i} className={`text-[10px] font-bold px-2 py-1 rounded bg-white/5 ${h >= 2 ? 'text-neon-green' : 'text-red-500'}`}>
-              {h.toFixed(2)}x
-            </span>
-          ))}
+        <div className="flex items-center gap-4">
+          {user?.bonusBalance && user.bonusBalance > 0 && (
+            <div className="flex flex-col items-center px-4 py-1.5 bg-neon-purple/10 border border-neon-purple/20 rounded-xl">
+              <span className="text-[8px] uppercase font-bold text-neon-purple/60">Rollover</span>
+              <div className="flex items-center gap-2">
+                <div className="w-20 h-1 bg-white/5 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-neon-purple shadow-[0_0_10px_#bc13fe] transition-all" 
+                    style={{ width: `${Math.min(100, ((user?.bonusRolloverProgress || 0) / (user?.bonusRolloverTarget || 1)) * 100)}%` }}
+                  />
+                </div>
+                <span className="text-[10px] font-bold text-white/50">
+                  {Math.round(((user?.bonusRolloverProgress || 0) / (user?.bonusRolloverTarget || 1)) * 100)}%
+                </span>
+              </div>
+            </div>
+          )}
+          <div className="flex gap-2 overflow-x-auto no-scrollbar">
+            {history.map((h, i) => (
+              <span key={i} className={`text-[10px] font-bold px-2 py-1 rounded bg-white/5 ${h >= 2 ? 'text-neon-green' : 'text-red-500'}`}>
+                {h.toFixed(2)}x
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -184,24 +235,30 @@ const CrashGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             <button 
               onClick={startNextRound}
               disabled={gameState === 'waiting'}
-              className="w-full bg-neon-blue text-black py-4 rounded-xl font-black text-lg shadow-[0_0_30px_#00f3ff] active:scale-95 transition-all disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
+              className={`w-full py-4 rounded-xl font-black text-lg active:scale-95 transition-all disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2 ${user?.balance && user.balance < betAmount && user.bonusBalance && user.bonusBalance >= betAmount ? 'bg-neon-purple text-black shadow-[0_0_30px_#bc13fe]' : 'bg-neon-blue text-black shadow-[0_0_30px_#00f3ff]'}`}
             >
               {gameState === 'waiting' ? (
                 <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin" />
               ) : (
                 <>
                   <Play size={20} fill="currentColor" />
-                  APOSTAR
+                  APOSTAR {user?.balance && user.balance < betAmount ? '(BÔNUS)' : ''}
                 </>
               )}
             </button>
           )}
 
-          <div className="pt-4 border-t border-white/5">
+          <div className="pt-4 border-t border-white/5 space-y-3">
             <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-white/40">
-              <span>Seu Saldo</span>
+              <span>Saldo Real</span>
               <span className="text-neon-blue">R$ {(user?.balance || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
+            {user?.bonusBalance && user.bonusBalance > 0 && (
+              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-white/40">
+                <span>Saldo Bônus</span>
+                <span className="text-neon-purple italic">R$ {(user?.bonusBalance || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+              </div>
+            )}
           </div>
         </div>
 

@@ -5,6 +5,11 @@ export interface UserData {
   userId: string;
   email: string;
   balance: number;
+  bonusBalance?: number;
+  bonusRolloverTarget?: number;
+  bonusRolloverProgress?: number;
+  referralBalance?: number;
+  referredBy?: string;
   vipLevel: number;
   lastIp: string;
   referralCode?: string;

@@ -120,6 +120,14 @@ export default function App() {
                 <span className="font-display font-medium text-sm tracking-tight">
                   R$ {(userData?.balance || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </span>
+                {userData?.bonusBalance && userData.bonusBalance > 0 && (
+                  <div className="flex flex-col items-end border-l border-white/10 pl-3">
+                    <span className="text-[8px] uppercase font-bold text-white/40 leading-none mb-0.5">Bônus</span>
+                    <span className="text-neon-purple font-display font-bold text-xs">
+                      R$ {userData.bonusBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                )}
                 <button 
                   onClick={() => setShowDeposit(true)}
                   className="bg-neon-green text-black px-4 py-1.5 rounded-lg text-xs font-black hover:brightness-110 active:scale-95 transition-all shadow-[0_0_15px_rgba(57,255,20,0.3)]"
@@ -218,7 +226,7 @@ function LoadingSkeleton() {
 }
 
 function DepositModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
-  const { firebaseUser } = useAuth();
+  const { firebaseUser, user: userData } = useAuth();
   const [loading, setLoading] = useState(false);
   const [paymentData, setPaymentData] = useState<{ qr_code: string; qr_code_base64: string; payment_id: string } | null>(null);
   const [pixCopied, setPixCopied] = useState(false);
@@ -233,6 +241,17 @@ function DepositModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => voi
           const res = await apiFetch(`/pix/status/${paymentData.payment_id}`);
           if (res.status === 'approved') {
             clearInterval(interval);
+            
+            // Credit referrer if applicable
+            if (userData?.referredBy) {
+              const referrerRef = doc(db, 'users', userData.referredBy);
+              updateDoc(referrerRef, {
+                referralBalance: increment(10),
+                referralCount: increment(1),
+                updatedAt: serverTimestamp()
+              }).catch(err => console.error("Error updating referrer:", err));
+            }
+
             alert('Pagamento aprovado! Seu saldo será atualizado.');
             onClose();
           }

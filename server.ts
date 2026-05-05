@@ -70,10 +70,6 @@ async function startServer() {
 
   app.use('/api', apiRouter);
 
-  // Legacy/other routes
-  app.use('/auth', authRoutes); // Keep for compatibility if needed
-  app.use('/', authRoutes);
-
   // Rota de saúde para o Render
   app.get('/health', (req, res) => {
     res.status(200).send('OK');
@@ -90,15 +86,22 @@ async function startServer() {
     console.log('Rodando em modo DESENVOLVIMENTO com Vite middleware');
   } else {
     // Ambiente de Produção (Render / Linux)
-    const distPath = path.join(__dirname, 'dist');
+    // Usamos process.cwd() para garantir que o caminho comece da raiz do projeto
+    const distPath = path.join(process.cwd(), 'dist');
+    
+    // Serve os arquivos estáticos da pasta dist
     app.use(express.static(distPath));
 
     // Fallback para SPA (Single Page Application)
-    // No Render, isso garante que ao dar F5 em /profile, o servidor retorne o index.html
+    // Qualquer rota que não seja capturada pelas APIs acima servirá o index.html
     app.get('*', (req, res) => {
+      // Evita loops infinitos ou servir index.html para chamadas de API que falharam
+      if (req.path.startsWith('/api')) {
+        return res.status(404).json({ error: 'API route not found' });
+      }
       res.sendFile(path.join(distPath, 'index.html'));
     });
-    console.log('Rodando em modo PRODUÇÃO servindo /dist');
+    console.log(`Rodando em modo PRODUÇÃO servindo: ${distPath}`);
   }
 
   app.listen(PORT, '0.0.0.0', () => {
