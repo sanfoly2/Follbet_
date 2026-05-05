@@ -14,7 +14,11 @@ import {
   Copy, 
   CheckCircle, 
   Smartphone,
-  Copy as CopyIcon
+  Copy as CopyIcon,
+  ShieldAlert,
+  Megaphone,
+  Settings,
+  X
 } from 'lucide-react';
 import { AuthContext, UserData, useAuth } from './context/AuthContext.js';
 
@@ -24,17 +28,27 @@ const GamesList = lazy(() => import('./components/GamesList.js'));
 const ProfileView = lazy(() => import('./components/ProfileView.js'));
 const ReferralView = lazy(() => import('./components/ReferralView.js'));
 const AviatorGame = lazy(() => import('./components/games/AviatorGame.js'));
+const AdminPanel = lazy(() => import('./components/AdminPanel.js'));
 
 export default function App() {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'games' | 'profile' | 'history' | 'referral'>('games');
+  const [activeTab, setActiveTab] = useState<'games' | 'profile' | 'history' | 'referral' | 'admin'>('games');
   const [activeGame, setActiveGame] = useState<string | null>(null);
   const [showDeposit, setShowDeposit] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
+  const [globalSettings, setGlobalSettings] = useState<any>(null);
+  const [announcementClosed, setAnnouncementClosed] = useState(false);
 
   useEffect(() => {
+    // Listen to global settings
+    const unsubscribeSettings = onSnapshot(doc(db, 'settings', 'global'), (docSnap) => {
+      if (docSnap.exists()) {
+        setGlobalSettings(docSnap.data());
+      }
+    });
+
     // Escuta mudanças na autenticação
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       setFirebaseUser(user);
@@ -44,18 +58,23 @@ export default function App() {
       }
     });
 
-    return () => unsubscribeAuth();
+    return () => {
+      unsubscribeAuth();
+      unsubscribeSettings();
+    };
   }, []);
+
+  const isAdmin = firebaseUser?.email === 'sansilva772@gmail.com';
 
   useEffect(() => {
     if (firebaseUser) {
-      // Usamos onSnapshot para dados em tempo real, mas garantimos que o loading só suma após o primeiro dado
+      // Usamos onSnapshot para dados em tempo real...
       const unsubscribeData = onSnapshot(doc(db, 'users', firebaseUser.uid), (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data() as UserData;
           setUserData(data);
 
-          // Bônus de boas-vindas (Saldo Bônus)
+          // Bônus de boas-vindas...
           if (!data.previewBonusV2) {
             updateDoc(doc(db, 'users', firebaseUser.uid), {
               bonusBalance: increment(20),
@@ -66,7 +85,7 @@ export default function App() {
             }).catch(err => console.error("Error applying welcome bonus:", err));
           }
 
-          // Verificação de conclusão de Rollover
+          // Verificação de conclusão de Rollover...
           if (data.bonusRolloverTarget && data.bonusRolloverTarget > 0 && 
               (data.bonusRolloverProgress || 0) >= data.bonusRolloverTarget && 
               (data.bonusBalance || 0) > 0) {
@@ -80,6 +99,22 @@ export default function App() {
               updatedAt: serverTimestamp()
             }).catch(err => console.error("Error converting bonus to balance:", err));
           }
+        } else if (isAdmin) {
+          // Auto create admin document if missing
+          const defaultAdmin: UserData = {
+            userId: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            balance: 1000,
+            vipLevel: 10,
+            lastIp: '0.0.0.0',
+            referralCode: 'ADMIN',
+            referralCount: 0
+          };
+          setDoc(doc(db, 'users', firebaseUser.uid), {
+             ...defaultAdmin,
+             createdAt: serverTimestamp(),
+             updatedAt: serverTimestamp()
+          });
         }
         setLoading(false);
       }, (error) => {
@@ -88,12 +123,13 @@ export default function App() {
       });
       return () => unsubscribeData();
     }
-  }, [firebaseUser]);
+  }, [firebaseUser, isAdmin]);
 
   const logout = () => signOut(auth);
 
   const updateBalance = async (amount: number) => {
     if (!firebaseUser || !userData) return;
+    if (userData.isBanned) throw new Error('Conta suspensa');
 
     const currentBalance = userData.balance || 0;
     const newBalance = Math.round((currentBalance + amount) * 100) / 100;
@@ -127,9 +163,85 @@ export default function App() {
     return <AuthPage />;
   }
 
+  // Maintenance screen check
+  if (globalSettings?.maintenanceMode && !isAdmin) {
+     return (
+       <div className="min-h-screen bg-dark-bg flex flex-col items-center justify-center p-8 text-center">
+         <div className="w-24 h-24 bg-neon-blue/20 rounded-3xl flex items-center justify-center text-neon-blue mb-8 animate-pulse">
+            <Settings size={48} />
+         </div>
+         <h1 className="text-4xl font-display font-black italic mb-4">EM MANUTENÇÃO</h1>
+         <p className="text-white/40 max-w-sm">Estamos trabalhando para melhorar sua experiência. Voltamos em breve!</p>
+       </div>
+     );
+  }
+
+  // Banned screen check
+  if (userData?.isBanned && !isAdmin) {
+    return (
+      <div className="min-h-screen bg-dark-bg flex flex-col items-center justify-center p-8 text-center text-red-500">
+        <ShieldAlert size={64} className="mb-6" />
+        <h1 className="text-4xl font-display font-black italic mb-4">CONTA SUSPENSA</h1>
+        <p className="text-white/40 max-w-md">Sua conta foi banida por violação dos termos. Entre em contato com o suporte para mais informações.</p>
+        <button onClick={logout} className="mt-10 px-8 py-3 bg-white/5 border border-white/10 rounded-xl text-white font-black uppercase text-xs">Sair</button>
+      </div>
+    );
+  }
+
+  const showGlobalAnnouncement = globalSettings?.showAnnouncement && 
+                                globalSettings?.announcement && 
+                                !announcementClosed && 
+                                activeTab === 'games' && 
+                                !isGameActive;
+
   return (
-    <AuthContext.Provider value={{ user: userData, firebaseUser, loading, logout, updateBalance }}>
+    <AuthContext.Provider value={{ user: userData, firebaseUser, loading, logout, updateBalance, isAdmin }}>
       <div className="min-h-screen pb-32 text-white relative isolate">
+        {/* Announcement Modal */}
+        <AnimatePresence>
+          {showGlobalAnnouncement && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+               <motion.div 
+                 initial={{ opacity: 0 }}
+                 animate={{ opacity: 1 }}
+                 exit={{ opacity: 0 }}
+                 onClick={() => setAnnouncementClosed(true)}
+                 className="absolute inset-0 bg-black/90 backdrop-blur-md"
+               />
+               <motion.div 
+                 initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                 animate={{ scale: 1, opacity: 1, y: 0 }}
+                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                 className="relative z-10 w-full max-w-md glass-card p-10 border-neon-purple/30 overflow-hidden"
+               >
+                  <div className="absolute top-0 right-0 p-4">
+                     <button 
+                      onClick={() => setAnnouncementClosed(true)}
+                      className="w-10 h-10 bg-white/5 hover:bg-white/10 rounded-full flex items-center justify-center text-white/40 hover:text-white transition-all"
+                     >
+                       <X size={20} />
+                     </button>
+                  </div>
+                  <div className="flex flex-col items-center text-center">
+                     <div className="w-16 h-1 bg-neon-purple mb-8 rounded-full shadow-[0_0_15px_#bc13fe]" />
+                     <div className="w-20 h-20 bg-neon-purple/10 rounded-3xl flex items-center justify-center text-neon-purple mb-6">
+                        <Megaphone size={40} className="animate-bounce" />
+                     </div>
+                     <h2 className="text-3xl font-display font-black italic mb-6 tracking-tighter">COMUNICADO FOLLBET</h2>
+                     <div className="text-white/60 text-sm leading-relaxed mb-10 whitespace-pre-wrap font-medium">
+                        {globalSettings?.announcement}
+                     </div>
+                     <button 
+                       onClick={() => setAnnouncementClosed(true)}
+                       className="w-full h-14 bg-neon-purple text-black font-black uppercase tracking-widest text-xs rounded-xl shadow-[0_15px_30px_rgba(188,19,254,0.3)] hover:scale-105 active:scale-95 transition-all"
+                     >
+                       ENTENDI
+                     </button>
+                  </div>
+               </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
         {/* Advanced Background Atmosphere */}
         <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden">
           <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-neon-green/30 to-transparent" />
@@ -212,6 +324,7 @@ export default function App() {
                     {activeTab === 'games' && <GamesList onPlay={(id) => setActiveGame(id)} />}
                     {activeTab === 'profile' && <ProfileView onShowWithdraw={() => setShowWithdraw(true)} />}
                     {activeTab === 'referral' && <ReferralView />}
+                    {activeTab === 'admin' && isAdmin && <AdminPanel />}
                   </div>
                 </Suspense>
               </motion.div>
@@ -229,6 +342,9 @@ export default function App() {
               <NavBtn active={activeTab === 'games'} onClick={() => setActiveTab('games')} icon={<Dice5 />} label="Jogos" />
               <NavBtn active={activeTab === 'referral'} onClick={() => setActiveTab('referral')} icon={<Handshake />} label="Indique" />
               <NavBtn active={activeTab === 'profile'} onClick={() => setActiveTab('profile')} icon={<UserIcon />} label="Perfil" />
+              {isAdmin && (
+                <NavBtn active={activeTab === 'admin'} onClick={() => setActiveTab('admin')} icon={<ShieldAlert />} label="Admin" />
+              )}
               <div className="w-px h-8 bg-white/10 mx-1 my-auto" />
               <button onClick={logout} className="p-3 text-red-500 hover:bg-red-500/10 rounded-xl transition-all">
                 <LogOut size={20} />

@@ -48,6 +48,16 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "email", "amount", "cpf", "status", "createdAt", "updatedAt"]
+    },
+    "GlobalSettings": {
+      "title": "Global Settings",
+      "description": "App-wide configuration",
+      "type": "object",
+      "properties": {
+        "maintenanceMode": { "type": "boolean" },
+        "announcement": { "type": "string" },
+        "showAnnouncement": { "type": "boolean" }
+      }
     }
   },
   "firestore": {
@@ -58,6 +68,10 @@
     "/withdrawals/{withdrawalId}": {
       "schema": "Withdrawal",
       "description": "Pending and processed withdrawal requests"
+    },
+    "/settings/global": {
+      "schema": "GlobalSettings",
+      "description": "Application-wide settings like maintenance mode and announcements"
     },
     "/ip_logs/{logId}": {
       "schema": "IpLog",

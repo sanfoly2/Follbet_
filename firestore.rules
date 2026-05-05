@@ -34,12 +34,18 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow get: if isOwner(userId);
+      allow list: if isAdmin();
       allow create: if isOwner(userId) && isValidUser(incoming());
       allow update: if (isOwner(userId) 
         && incoming().diff(existing()).affectedKeys().hasOnly(['balance', 'bonusBalance', 'bonusRolloverProgress', 'bonusRolloverTarget', 'vipLevel', 'lastIp', 'referralCount', 'updatedAt', 'previewBonusV2'])
         && incoming().updatedAt == request.time
         && (incoming().balance is number && incoming().balance >= 0))
         || isAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     match /withdrawals/{withdrawalId} {

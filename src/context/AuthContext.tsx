@@ -19,6 +19,7 @@ export interface UserData {
   previewBonusV2?: boolean;
   withdrawalRolloverTarget?: number;
   withdrawalRolloverProgress?: number;
+  isBanned?: boolean;
 }
 
 export interface AuthContextType {
@@ -27,6 +28,7 @@ export interface AuthContextType {
   loading: boolean;
   logout: () => void;
   updateBalance: (amount: number) => Promise<void>;
+  isAdmin: boolean;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
