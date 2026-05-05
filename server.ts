@@ -17,7 +17,7 @@ import requestIp from 'request-ip';
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   // Configuração para permitir CORS e JSON
   app.use(express.json());
@@ -86,30 +86,10 @@ async function startServer() {
     console.log('Rodando em modo DESENVOLVIMENTO com Vite middleware');
   } else {
     // Ambiente de Produção (Render / Linux)
-    // Usamos process.cwd() para garantir que o caminho comece da raiz do projeto
-    let distPath = path.join(process.cwd(), 'dist');
-
-    // Se o processo já estiver rodando de dentro da pasta dist (comum em alguns setups de build),
-    // ajustamos o caminho para não duplicar /dist/dist
-    if (process.cwd().endsWith('dist') || __dirname.endsWith('dist')) {
-      distPath = process.cwd();
-    }
-    
-    console.log(`Verificando pasta dist em: ${distPath}`);
-    
-    // Serve os arquivos estáticos da pasta dist com cache
-    app.use(express.static(distPath, {
-      maxAge: '1h', // Pequeno cache para assets
-      index: false
-    }));
-
-    // Fallback para SPA (Single Page Application)
-    // Qualquer rota que não seja capturada pelas APIs acima servirá o index.html
+    const distPath = path.resolve(process.cwd(), 'dist');
+    console.log('Verificando pasta dist em:', distPath);
+    app.use(express.static(distPath));
     app.get('*', (req, res) => {
-      // Evita loops infinitos ou servir index.html para chamadas de API que falharam
-      if (req.path.startsWith('/api') || req.path.startsWith('/auth')) {
-        return res.status(404).json({ error: 'Not found' });
-      }
       res.sendFile(path.join(distPath, 'index.html'));
     });
     console.log(`Rodando em modo PRODUÇÃO servindo: ${distPath}`);
