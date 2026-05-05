@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import cookieParser from 'cookie-parser';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
@@ -87,10 +88,18 @@ async function startServer() {
   } else {
     // Ambiente de Produção (Render / Linux)
     const distPath = path.resolve(process.cwd(), 'dist');
+    const indexPath = path.join(distPath, 'index.html');
+    
     console.log('Verificando pasta dist em:', distPath);
+    
+    if (!fs.existsSync(indexPath)) {
+      console.error('ERRO CRÍTICO: Arquivo index.html não encontrado em:', indexPath);
+      console.error('Certifique-se de que o comando "npm run build" foi executado com sucesso.');
+    }
+
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      res.sendFile(indexPath);
     });
     console.log(`Rodando em modo PRODUÇÃO servindo: ${distPath}`);
   }
