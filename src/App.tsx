@@ -1,4 +1,4 @@
-import { useState, useEffect, Suspense, lazy } from 'react';
+import { useState, useEffect, Suspense, lazy, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
 import { doc, onSnapshot, updateDoc, increment, serverTimestamp, setDoc } from 'firebase/firestore';
@@ -29,6 +29,7 @@ const GamesList = lazy(() => import('./components/GamesList.js'));
 const ProfileView = lazy(() => import('./components/ProfileView.js'));
 const ReferralView = lazy(() => import('./components/ReferralView.js'));
 const AviatorGame = lazy(() => import('./components/games/AviatorGame.js'));
+const LoadingScreen = lazy(() => import('./components/LoadingScreen.js'));
 const AdminPanel = lazy(() => import('./components/AdminPanel.js'));
 
 export default function App() {
@@ -37,6 +38,8 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'games' | 'profile' | 'history' | 'referral' | 'admin'>('games');
   const [activeGame, setActiveGame] = useState<string | null>(null);
+  const [isLoadingGame, setIsLoadingGame] = useState(false);
+  const menuMusicRef = useRef<HTMLAudioElement | null>(null);
   const [showDeposit, setShowDeposit] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [showWelcomeGift, setShowWelcomeGift] = useState(false);
@@ -150,6 +153,25 @@ export default function App() {
     }
   };
 
+  // Menu Music Logic
+  useEffect(() => {
+    if (!menuMusicRef.current) {
+      menuMusicRef.current = new Audio('/theme.mp3');
+      menuMusicRef.current.loop = true;
+      menuMusicRef.current.volume = 0.2;
+    }
+
+    if (!activeGame && !isLoadingGame) {
+      menuMusicRef.current.play().catch(() => {});
+    } else {
+      menuMusicRef.current.pause();
+    }
+
+    return () => {
+      menuMusicRef.current?.pause();
+    };
+  }, [activeGame, isLoadingGame]);
+
   if (loading) {
     return (
       <div className="min-h-[100dvh] bg-dark-bg flex flex-col items-center justify-center p-6 overflow-hidden">
@@ -157,6 +179,14 @@ export default function App() {
       </div>
     );
   }
+
+  const handlePlayGame = (id: string) => {
+    setIsLoadingGame(true);
+    setTimeout(() => {
+      setActiveGame(id);
+      setIsLoadingGame(false);
+    }, 2000);
+  };
 
   const isGameActive = activeGame !== null;
 
@@ -296,15 +326,19 @@ export default function App() {
 
         <main className={`max-w-[1400px] mx-auto relative z-10 flex-1 ${!isGameActive ? 'p-4 md:p-8 lg:p-12' : 'p-0'}`}>
           <AnimatePresence mode="wait">
-            {activeGame === 'aviator' ? (
+            {isLoadingGame ? (
+              <Suspense fallback={null}>
+                <LoadingScreen />
+              </Suspense>
+            ) : activeGame === 'aviator' ? (
               <motion.div
                 key="aviator-wrapper"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="w-full flex-1"
+                className="w-full h-full flex-1"
               >
-                <div className="sticky top-0 z-[60] bg-dark-bg/80 backdrop-blur-xl border-b border-white/5 p-4 flex items-center justify-between lg:hidden mb-4 rounded-xl mx-4 mt-4 shadow-2xl">
+                <div className="fixed top-0 left-0 right-0 z-[60] bg-dark-bg/80 backdrop-blur-xl border-b border-white/5 p-4 flex items-center justify-between lg:hidden shadow-2xl">
                   <div className="flex items-center gap-3 bg-white/5 px-3 py-2 rounded-lg border border-white/10">
                     <Wallet size={14} className="text-neon-blue" />
                     <div className="flex flex-col">
@@ -330,7 +364,7 @@ export default function App() {
               >
                 <Suspense fallback={<LoadingSkeleton />}>
                   <div className="w-full">
-                    {activeTab === 'games' && <GamesList onPlay={(id) => setActiveGame(id)} />}
+                    {activeTab === 'games' && <GamesList onPlay={handlePlayGame} />}
                     {activeTab === 'profile' && <ProfileView onShowWithdraw={() => setShowWithdraw(true)} />}
                     {activeTab === 'referral' && <ReferralView />}
                     {activeTab === 'admin' && isAdmin && <AdminPanel />}

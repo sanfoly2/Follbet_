@@ -16,25 +16,7 @@ export default function GamesList({ onPlay }: GamesListProps) {
       description: 'Voe alto e saque antes do crash',
       bgGradient: 'from-[#6366f1] via-[#a855f7] to-[#ec4899]',
       accent: 'text-neon-purple'
-    },
-    { 
-      id: 'double', 
-      title: 'Double Neon', 
-      color: 'blue', 
-      icon: <Dice5 />, 
-      description: 'Multiplique seu saldo no Double',
-      bgGradient: 'from-[#3b82f6] via-[#2dd4bf] to-[#10b981]',
-      accent: 'text-neon-blue'
-    },
-    { 
-      id: 'slots', 
-      title: 'Ultra Slots', 
-      color: 'green', 
-      icon: <Gamepad2 />, 
-      description: 'As máquinas mais pagadoras',
-      bgGradient: 'from-[#22c55e] via-[#4ade80] to-[#facc15]',
-      accent: 'text-neon-green'
-    },
+    }
   ];
 
   return (
