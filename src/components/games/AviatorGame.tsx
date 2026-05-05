@@ -15,10 +15,6 @@ import { db as firestore } from '../../lib/firebase.js';
 import { doc, updateDoc, increment, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext.js';
 
-// --- AJUSTE DE ÁUDIO AQUI ---
-import crashSound from './crash.mp3';
-import winSound from './win.mp3';
-
 interface GameHistory {
   multiplier: number;
   time: string;
@@ -48,14 +44,12 @@ export default function AviatorGame({ onBack }: AviatorGameProps) {
   const requestRef = useRef<number>(0);
   const startTimeRef = useRef<number>(0);
   const crashPointRef = useRef<number>(0);
-  
-  // --- AJUSTE NAS REFERÊNCIAS DE ÁUDIO ---
   const audioRefs = useRef<{
     crash: HTMLAudioElement;
     win: HTMLAudioElement;
   }>({
-    crash: new Audio(crashSound),
-    win: new Audio(winSound)
+    crash: new Audio('/crash.mp3'),
+    win: new Audio('/win.mp3')
   });
 
   // Setup audio
@@ -138,6 +132,7 @@ export default function AviatorGame({ onBack }: AviatorGameProps) {
     setHasBet(true); 
 
     try {
+      // Prevenção de erro caso a propriedade seja uid em vez de userId
       const uid = user.userId || (user as any).uid;
       if (!uid) throw new Error("ID do utilizador não encontrado no objeto user.");
 
@@ -153,6 +148,7 @@ export default function AviatorGame({ onBack }: AviatorGameProps) {
         if (typeof updateBalance === 'function') {
           await updateBalance(-betAmount);
         } else {
+          // Fallback seguro caso a função do Contexto não exista
           await updateDoc(doc(firestore, 'users', uid), {
             balance: increment(-betAmount),
             withdrawalRolloverProgress: increment(betAmount),
@@ -161,7 +157,7 @@ export default function AviatorGame({ onBack }: AviatorGameProps) {
         }
       }
     } catch (err: any) {
-      setHasBet(false); 
+      setHasBet(false); // Reverte o botão se houver erro
       alert(`ERRO AO APOSTAR: ${err.message || 'Erro desconhecido ao conectar com a base de dados.'}`);
       console.error(err);
     }
@@ -253,6 +249,7 @@ export default function AviatorGame({ onBack }: AviatorGameProps) {
 
     const tick = () => {
       const elapsed = (Date.now() - startTimeRef.current) / 1000;
+      // Growth curve
       const currentMult = 1 + (Math.pow(1.065, elapsed * 1.1) - 1);
       
       setMultiplier(currentMult);
@@ -265,7 +262,7 @@ export default function AviatorGame({ onBack }: AviatorGameProps) {
         
         setTimeout(() => {
           startBettingPhase();
-        }, 4000); 
+        }, 4000); // 4s crash display
         return;
       }
 
@@ -504,4 +501,14 @@ export default function AviatorGame({ onBack }: AviatorGameProps) {
                   <div className="text-center py-10 text-white/10 italic text-xs">Aguardando dados...</div>
                 ) || history.map((h, i) => (
                   <div key={i} className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/5">
-                 
+                     <span className="text-[10px] text-white/40">{h.time}</span>
+                     <span className={`font-black text-sm ${h.multiplier >= 2 ? 'text-neon-purple' : 'text-neon-blue'}`}>{h.multiplier.toFixed(2)}x</span>
+                  </div>
+                ))}
+             </div>
+           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
