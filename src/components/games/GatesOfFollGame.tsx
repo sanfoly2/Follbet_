@@ -148,14 +148,14 @@ export default function GatesOfFollGame({ onBack }: GatesOfFollGameProps) {
     if (isProcessing || !user) return;
     initAudio();
 
-    if (freeSpinsRemaining <= 0 && (user.balance || 0) < currentBet) {
+    if (freeSpinsRemaining <= 0 && (user.balance || 0) < currentBet && !isAuto) {
       setMessage({ text: 'Saldo insuficiente!', color: '#FF4444' });
       return;
     }
 
     setIsProcessing(true);
     setCascadeMultiplier(1);
-    setMessage(null);
+    setMessage({ text: 'Girando...', color: '#999' });
     setHighlightedCells(new Set());
     
     const uid = user.userId || (user as any).uid;
@@ -172,7 +172,7 @@ export default function GatesOfFollGame({ onBack }: GatesOfFollGameProps) {
           });
         }
       } else {
-        setFreeSpinsRemaining(prev => prev - 1);
+        setFreeSpinsRemaining(prev => Math.max(0, prev - 1));
       }
 
       // 2. Initial Spin
@@ -185,13 +185,18 @@ export default function GatesOfFollGame({ onBack }: GatesOfFollGameProps) {
       let hasMatches = true;
       let totalSessionWin = 0;
       let localCascadeMult = 1;
+      let cascadeCount = 0;
+      const MAX_CASCADES = 10;
 
-      while (hasMatches) {
+      while (hasMatches && cascadeCount < MAX_CASCADES) {
+        cascadeCount++;
         const matches = findMatches(currentGrid);
         if (matches.length === 0) {
           hasMatches = false;
           break;
         }
+
+        setMessage({ text: 'CASCATEANDO...', color: '#D4AF37' });
 
         // Highlight
         const matchingSyms = new Set(matches.map(m => m.symbol));
@@ -249,6 +254,10 @@ export default function GatesOfFollGame({ onBack }: GatesOfFollGameProps) {
         await new Promise(r => setTimeout(r, 400));
       }
 
+      if (cascadeCount >= MAX_CASCADES) {
+        console.warn("Safety limit reached: MAX_CASCADES");
+      }
+
       // 4. Final Payout
       if (totalSessionWin > 0) {
         if (typeof updateBalance === 'function') {
@@ -276,6 +285,7 @@ export default function GatesOfFollGame({ onBack }: GatesOfFollGameProps) {
 
     } catch (err) {
       console.error("Game error:", err);
+      setMessage({ text: 'Erro no jogo. Tente novamente.', color: '#FF4444' });
     } finally {
       setIsProcessing(false);
     }
