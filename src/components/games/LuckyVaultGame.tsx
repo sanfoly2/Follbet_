@@ -34,6 +34,7 @@ export default function LuckyVaultGame({ onBack }: LuckyVaultGameProps) {
   
   const audioCtxRef = useRef<AudioContext | null>(null);
   const spinningRef = useRef([false, false, false]);
+  const processingRef = useRef(false);
 
   const initAudio = () => {
     if (!audioCtxRef.current) {
@@ -104,18 +105,23 @@ export default function LuckyVaultGame({ onBack }: LuckyVaultGameProps) {
   };
 
   const handleSpin = async () => {
-    if (isSpinning || !user) return;
+    // Immediate block using Ref
+    if (processingRef.current || isSpinning || !user) return;
+    
+    processingRef.current = true;
+    setIsSpinning(true);
     initAudio();
 
     const totalBalance = (user.balance || 0) + (user.bonusBalance || 0);
     if (totalBalance < currentBet) {
       setMessage({ text: 'Saldo insuficiente!', color: '#FF4444' });
       setTimeout(() => setMessage(null), 2000);
+      setIsSpinning(false);
+      processingRef.current = false;
       return;
     }
 
-    // Start UI animation immediately
-    setIsSpinning(true);
+    // Reset UI
     spinningRef.current = [true, true, true];
     setSpinningReels([true, true, true]);
     setWinningReels([false, false, false]);
@@ -151,22 +157,15 @@ export default function LuckyVaultGame({ onBack }: LuckyVaultGameProps) {
       // 2. Generation
       const newResults = [getWeightedSymbol(), getWeightedSymbol(), getWeightedSymbol()];
       
-      // Animation sequence: Stop reels one by one with fixed intervals
+      // Animation sequence: Stop reels one by one
       for (let i = 0; i < 3; i++) {
-        // Reduced wait time for faster response but still sequential
         await new Promise(resolve => setTimeout(resolve, 600)); 
         
         const finalSymbol = newResults[i];
-        
-        // Stop current reel
         spinningRef.current[i] = false;
         
-        // Update both states in one tick
-        setSpinningReels(prev => {
-          const next = [...prev];
-          next[i] = false;
-          return next;
-        });
+        const currentReels = [...spinningRef.current];
+        setSpinningReels(currentReels);
         
         setReels(prev => {
           const next = [...prev];
@@ -177,11 +176,7 @@ export default function LuckyVaultGame({ onBack }: LuckyVaultGameProps) {
         playTone('spin');
       }
 
-      // Small delay after last reel to let animation settle
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      // Important to set this before evaluating win to unlock button
-      setIsSpinning(false);
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       // 3. Result Evaluation
       const result = checkWin(newResults);
@@ -190,11 +185,9 @@ export default function LuckyVaultGame({ onBack }: LuckyVaultGameProps) {
         const mult = result.multiplier!;
         const winnings = currentBet * mult;
 
-        // Visual win feedback
         setWinningReels([true, true, true]);
         setWinningLine(true);
         
-        // Payout logic
         if (usedBonusLocal) {
           await updateDoc(doc(firestore, 'users', uid), {
             bonusBalance: increment(winnings),
@@ -218,19 +211,19 @@ export default function LuckyVaultGame({ onBack }: LuckyVaultGameProps) {
           color: result.bigWin ? '#FFD700' : '#4CAF50' 
         });
         setHistory(prev => [{ symbol: newResults[0], mult, time: new Date().toLocaleTimeString() }, ...prev].slice(0, 10));
-        setTimeout(() => setMessage(null), 5000);
       } else if (result.nearMiss) {
         setMessage({ text: 'Quase! Tente novamente...', color: '#FFA500' });
-        setTimeout(() => setMessage(null), 2500);
       }
 
     } catch (err) {
       console.error("Spin error:", err);
-      // Clean up on error to prevent infinite spin state
+      setMessage({ text: 'Erro na conexão', color: '#FF4444' });
+    } finally {
+      // RESET ALWAYS
       spinningRef.current = [false, false, false];
       setSpinningReels([false, false, false]);
       setIsSpinning(false);
-      setMessage({ text: 'Erro na conexão', color: '#FF4444' });
+      processingRef.current = false;
       setTimeout(() => setMessage(null), 3000);
     }
   };

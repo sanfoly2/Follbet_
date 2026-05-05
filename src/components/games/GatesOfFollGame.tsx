@@ -43,6 +43,7 @@ export default function GatesOfFollGame({ onBack }: GatesOfFollGameProps) {
   const [highlightedCells, setHighlightedCells] = useState<Set<string>>(new Set());
 
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const processingRef = useRef(false);
 
   const initAudio = () => {
     if (!audioCtxRef.current) {
@@ -145,15 +146,19 @@ export default function GatesOfFollGame({ onBack }: GatesOfFollGameProps) {
   };
 
   const handleSpin = async (isAuto = false) => {
-    if (isProcessing || !user) return;
+    if (processingRef.current || isProcessing || !user) return;
+    
+    processingRef.current = true;
+    setIsProcessing(true);
     initAudio();
 
     if (freeSpinsRemaining <= 0 && (user.balance || 0) < currentBet && !isAuto) {
       setMessage({ text: 'Saldo insuficiente!', color: '#FF4444' });
+      setIsProcessing(false);
+      processingRef.current = false;
       return;
     }
 
-    setIsProcessing(true);
     setCascadeMultiplier(1);
     setMessage({ text: 'Girando...', color: '#999' });
     setHighlightedCells(new Set());
@@ -254,10 +259,6 @@ export default function GatesOfFollGame({ onBack }: GatesOfFollGameProps) {
         await new Promise(r => setTimeout(r, 400));
       }
 
-      if (cascadeCount >= MAX_CASCADES) {
-        console.warn("Safety limit reached: MAX_CASCADES");
-      }
-
       // 4. Final Payout
       if (totalSessionWin > 0) {
         if (typeof updateBalance === 'function') {
@@ -288,6 +289,7 @@ export default function GatesOfFollGame({ onBack }: GatesOfFollGameProps) {
       setMessage({ text: 'Erro no jogo. Tente novamente.', color: '#FF4444' });
     } finally {
       setIsProcessing(false);
+      processingRef.current = false;
     }
   };
 
