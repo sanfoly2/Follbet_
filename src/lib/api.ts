@@ -1,5 +1,5 @@
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { db } from './firebase.js';
 
 export async function fetchUserProfile(uid: string) {
   const userDoc = await getDoc(doc(db, 'users', uid));

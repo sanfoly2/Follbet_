@@ -2,9 +2,9 @@ import { useState, useEffect, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
 import { doc, onSnapshot, updateDoc, increment, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from './lib/firebase';
-import { apiFetch } from './lib/api';
-import NeonLogo from './components/NeonLogo';
+import { auth, db } from './lib/firebase.js';
+import { apiFetch } from './lib/api.js';
+import NeonLogo from './components/NeonLogo.js';
 import { 
   Dice5, 
   Wallet, 
@@ -16,14 +16,14 @@ import {
   Smartphone,
   Copy as CopyIcon
 } from 'lucide-react';
-import { AuthContext, UserData, useAuth } from './context/AuthContext';
+import { AuthContext, UserData, useAuth } from './context/AuthContext.js';
 
 // Lazy loaded components for better performance
-const AuthPage = lazy(() => import('./pages/AuthPage'));
-const GamesList = lazy(() => import('./components/GamesList'));
-const ProfileView = lazy(() => import('./components/ProfileView'));
-const ReferralView = lazy(() => import('./components/ReferralView'));
-const CrashGame = lazy(() => import('./components/games/CrashGame'));
+const AuthPage = lazy(() => import('./pages/AuthPage.js'));
+const GamesList = lazy(() => import('./components/GamesList.js'));
+const ProfileView = lazy(() => import('./components/ProfileView.js'));
+const ReferralView = lazy(() => import('./components/ReferralView.js'));
+const CrashGame = lazy(() => import('./components/games/CrashGame.js'));
 
 export default function App() {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);

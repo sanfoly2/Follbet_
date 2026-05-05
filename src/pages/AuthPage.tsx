@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { auth, db } from '../lib/firebase';
+import { auth, db } from '../lib/firebase.js';
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
@@ -8,9 +8,9 @@ import {
   User as FirebaseUser
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import NeonLogo from '../components/NeonLogo';
+import NeonLogo from '../components/NeonLogo.js';
 import { Shield, Mail, Lock, UserPlus, LogIn, Globe } from 'lucide-react';
-import { apiFetch } from '../lib/api';
+import { apiFetch } from '../lib/api.js';
 
 const AuthPage: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);

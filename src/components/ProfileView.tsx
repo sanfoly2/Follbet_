@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 import { User as UserIcon, ShieldCheck, Globe } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext.js';
 
 export default function ProfileView() {
   const { user, firebaseUser } = useAuth();

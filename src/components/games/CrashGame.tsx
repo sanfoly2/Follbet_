@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useAuth } from '../../context/AuthContext';
-import { auth, db as firestore } from '../../lib/firebase';
+import { useAuth } from '../../context/AuthContext.js';
+import { auth, db as firestore } from '../../lib/firebase.js';
 import { doc, updateDoc, increment, serverTimestamp } from 'firebase/firestore';
 import { Zap, TrendingUp, Wallet, ArrowLeft, Play, HandCoins } from 'lucide-react';
 

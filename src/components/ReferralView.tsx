@@ -1,7 +1,7 @@
 import { useState, ReactNode } from 'react';
 import { motion } from 'motion/react';
 import { Handshake, User as UserIcon, TrendingUp, Share2, Copy, CheckCircle } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext.js';
 
 export default function ReferralView() {
   const { user } = useAuth();

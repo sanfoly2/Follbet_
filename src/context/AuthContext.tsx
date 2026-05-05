@@ -7,6 +7,8 @@ export interface UserData {
   balance: number;
   vipLevel: number;
   lastIp: string;
+  referralCode?: string;
+  referralCount?: number;
   migrationBonusApplied_v1?: boolean;
 }
 

@@ -18,6 +18,8 @@
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "@types/request-ip": "^0.0.41",
     "@vitejs/plugin-react": "^5.0.4",
     "axios": "^1.16.0",
