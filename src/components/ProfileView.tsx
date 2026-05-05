@@ -82,11 +82,32 @@ export default function ProfileView({ onShowWithdraw }: { onShowWithdraw: () => 
                         Solicitar Saque
                     </button>
                     {user?.bonusBalance && user.bonusBalance > 0 && (
-                    <div className="bg-neon-purple/10 border border-neon-purple/30 rounded-2xl p-4 flex-1 md:max-w-[200px]">
-                        <p className="text-neon-purple text-[8px] font-black uppercase tracking-widest mb-1">Saldo de Bônus</p>
-                        <p className="text-xl font-display font-black text-white italic">
-                            R$ {user.bonusBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </p>
+                    <div className="bg-neon-purple/10 border border-neon-purple/30 rounded-2xl p-4 flex-1 md:max-w-[280px]">
+                        <div className="flex justify-between items-center mb-1">
+                            <p className="text-neon-purple text-[8px] font-black uppercase tracking-widest leading-none">Saldo de Bônus</p>
+                            <p className="text-white font-display font-black text-xs">
+                                R$ {user.bonusBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </p>
+                        </div>
+                        
+                        {user.bonusRolloverTarget && user.bonusRolloverTarget > 0 && (
+                            <div className="mt-3">
+                                <div className="flex justify-between text-[7px] font-black uppercase text-white/40 mb-1 tracking-widest">
+                                    <span>Rollover</span>
+                                    <span>{((user.bonusRolloverProgress || 0) / user.bonusRolloverTarget * 100).toFixed(0)}%</span>
+                                </div>
+                                <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                                    <motion.div 
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${Math.min(100, ((user.bonusRolloverProgress || 0) / user.bonusRolloverTarget * 100))}%` }}
+                                        className="h-full bg-neon-purple shadow-[0_0_10px_#bc13fe]"
+                                    />
+                                </div>
+                                <p className="text-[6px] text-white/20 mt-1 uppercase font-bold tracking-tighter">
+                                    Faltam R$ {Math.max(0, user.bonusRolloverTarget - (user.bonusRolloverProgress || 0)).toFixed(2)} para liberar
+                                </p>
+                            </div>
+                        )}
                     </div>
                 )}
                 </div>

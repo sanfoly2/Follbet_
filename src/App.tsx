@@ -60,9 +60,25 @@ export default function App() {
             updateDoc(doc(db, 'users', firebaseUser.uid), {
               bonusBalance: increment(20),
               bonusRolloverTarget: increment(200),
+              bonusRolloverProgress: 0,
               previewBonusV2: true,
               updatedAt: serverTimestamp()
             }).catch(err => console.error("Error applying welcome bonus:", err));
+          }
+
+          // Verificação de conclusão de Rollover
+          if (data.bonusRolloverTarget && data.bonusRolloverTarget > 0 && 
+              (data.bonusRolloverProgress || 0) >= data.bonusRolloverTarget && 
+              (data.bonusBalance || 0) > 0) {
+            
+            const conversionAmount = data.bonusBalance || 0;
+            updateDoc(doc(db, 'users', firebaseUser.uid), {
+              balance: increment(conversionAmount),
+              bonusBalance: 0,
+              bonusRolloverProgress: 0,
+              bonusRolloverTarget: 0,
+              updatedAt: serverTimestamp()
+            }).catch(err => console.error("Error converting bonus to balance:", err));
           }
         }
         setLoading(false);
@@ -260,7 +276,7 @@ function LoadingSkeleton() {
 function DepositModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
   const { firebaseUser, user: userData } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [paymentData, setPaymentData] = useState<{ qr_code: string; qr_code_base64: string; payment_id: string } | null>(null);
+  const [paymentData, setPaymentData] = useState<{ qr_code: string; qr_code_base64: string; payment_id: string; amount: number } | null>(null);
   const [pixCopied, setPixCopied] = useState(false);
   const values = [20, 50, 100, 200, 500, 1000];
 
@@ -285,6 +301,16 @@ function DepositModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => voi
             }
 
             alert('Pagamento aprovado! Seu saldo será atualizado.');
+            
+            // Credit balance and update withdrawal rollover target
+            if (firebaseUser) {
+              await updateDoc(doc(db, 'users', firebaseUser.uid), {
+                balance: increment(paymentData.amount),
+                withdrawalRolloverTarget: increment(paymentData.amount * 10),
+                updatedAt: serverTimestamp()
+              });
+            }
+
             onClose();
           }
         } catch (err) {
@@ -319,7 +345,8 @@ function DepositModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => voi
         setPaymentData({
           qr_code,
           qr_code_base64,
-          payment_id: String(payment_id)
+          payment_id: String(payment_id),
+          amount: amount
         });
       }
     } catch (err: any) {
@@ -476,6 +503,12 @@ function WithdrawModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => vo
     if (value > (userData.balance || 0)) return alert('Saldo insuficiente');
     if (cpf.length < 11) return alert('CPF inválido');
 
+    const rolloverProgress = userData.withdrawalRolloverProgress || 0;
+    const rolloverTarget = userData.withdrawalRolloverTarget || 0;
+    if (rolloverProgress < rolloverTarget) {
+      return alert(`Você precisa apostar mais R$ ${(rolloverTarget - rolloverProgress).toFixed(2)} para liberar o saque.`);
+    }
+
     setLoading(true);
     try {
       // Registrar solicitação de saque no Firestore
@@ -552,6 +585,27 @@ function WithdrawModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => vo
                 </h2>
 
                 <form onSubmit={handleWithdraw} className="space-y-4">
+                  {userData?.withdrawalRolloverTarget && userData.withdrawalRolloverTarget > 0 && (
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-2">
+                       <div className="flex justify-between items-center mb-2">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Rollover de Saque</span>
+                          <span className="text-[10px] font-black text-neon-purple">
+                            {Math.min(100, ((userData.withdrawalRolloverProgress || 0) / userData.withdrawalRolloverTarget * 100)).toFixed(0)}%
+                          </span>
+                       </div>
+                       <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                          <motion.div 
+                             initial={{ width: 0 }}
+                             animate={{ width: `${Math.min(100, ((userData.withdrawalRolloverProgress || 0) / userData.withdrawalRolloverTarget * 100))}%` }}
+                             className="h-full bg-neon-purple shadow-[0_0_10px_#bc13fe]"
+                          />
+                       </div>
+                       <p className="text-[8px] text-white/20 mt-2 uppercase font-bold tracking-tight">
+                         Aposte R$ {Math.max(0, userData.withdrawalRolloverTarget - (userData.withdrawalRolloverProgress || 0)).toFixed(2)} para liberar
+                       </p>
+                    </div>
+                  )}
+
                   <div>
                     <label className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-2 block">CPF do Titular</label>
                     <input 

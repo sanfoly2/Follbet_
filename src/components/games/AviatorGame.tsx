@@ -131,6 +131,11 @@ const AviatorGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         await updateDoc(doc(firestore, 'users', user.userId), updateObj);
       } else {
         await updateBalance(-betAmount);
+        // Increment withdrawal rollover progress for real balance bets
+        await updateDoc(doc(firestore, 'users', user.userId), {
+          withdrawalRolloverProgress: increment(betAmount),
+          updatedAt: serverTimestamp()
+        });
       }
       setHasBet(true);
     } catch (err: any) {

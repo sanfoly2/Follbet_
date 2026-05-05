@@ -17,6 +17,8 @@ export interface UserData {
   migrationBonusApplied_v1?: boolean;
   previewBonusV1?: boolean;
   previewBonusV2?: boolean;
+  withdrawalRolloverTarget?: number;
+  withdrawalRolloverProgress?: number;
 }
 
 export interface AuthContextType {
