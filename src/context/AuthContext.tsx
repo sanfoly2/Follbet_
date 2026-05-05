@@ -20,6 +20,8 @@ export interface UserData {
   withdrawalRolloverTarget?: number;
   withdrawalRolloverProgress?: number;
   isBanned?: boolean;
+  previewBonusV3?: boolean;
+  claimedWelcomeBonus?: boolean;
 }
 
 export interface AuthContextType {

@@ -18,7 +18,8 @@ import {
   ShieldAlert,
   Megaphone,
   Settings,
-  X
+  X,
+  Gift
 } from 'lucide-react';
 import { AuthContext, UserData, useAuth } from './context/AuthContext.js';
 
@@ -38,6 +39,7 @@ export default function App() {
   const [activeGame, setActiveGame] = useState<string | null>(null);
   const [showDeposit, setShowDeposit] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
+  const [showWelcomeGift, setShowWelcomeGift] = useState(false);
   const [globalSettings, setGlobalSettings] = useState<any>(null);
   const [announcementClosed, setAnnouncementClosed] = useState(false);
 
@@ -76,14 +78,8 @@ export default function App() {
           setUserData(data);
 
           // Bônus de boas-vindas...
-          if (!data.previewBonusV2) {
-            updateDoc(doc(db, 'users', firebaseUser.uid), {
-              bonusBalance: increment(20),
-              bonusRolloverTarget: increment(200),
-              bonusRolloverProgress: 0,
-              previewBonusV2: true,
-              updatedAt: serverTimestamp()
-            }).catch(err => console.error("Error applying welcome bonus:", err));
+          if (!data.previewBonusV3 && !data.claimedWelcomeBonus) {
+            setShowWelcomeGift(true);
           }
 
           // Verificação de conclusão de Rollover...
@@ -258,31 +254,36 @@ export default function App() {
             <div className="max-w-[1400px] mx-auto flex items-center justify-between">
               <NeonLogo size="sm" />
               <div className="flex items-center gap-4">
-                <div className="bg-white/5 px-4 py-1 rounded-xl flex items-center gap-3 border border-white/10 pr-1 shadow-inner">
-                  <Wallet className="w-4 h-4 text-neon-blue" />
-                  <span className="font-display font-medium text-sm tracking-tight">
-                    R$ {(userData?.balance || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </span>
-                  {userData?.bonusBalance && userData.bonusBalance > 0 && (
-                    <div className="flex flex-col items-end border-l border-white/10 pl-3">
-                      <span className="text-[8px] uppercase font-bold text-white/40 leading-none mb-0.5">Bônus</span>
-                      <span className="text-neon-purple font-display font-bold text-xs">
-                        R$ {userData.bonusBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                <div className="bg-white/5 px-4 py-1.5 rounded-xl flex items-center gap-4 border border-white/10 pr-1.5 shadow-inner">
+                  <div className="flex flex-col items-start">
+                    <span className="text-[8px] uppercase font-black tracking-widest text-white/40 leading-none mb-1">Saldo Total</span>
+                    <div className="flex items-center gap-2">
+                      <Wallet className="w-3.5 h-3.5 text-neon-blue" />
+                      <span className="font-display font-black text-sm text-neon-green tracking-tight">
+                        R$ {((userData?.balance || 0) + (userData?.bonusBalance || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </span>
+                      {userData?.bonusBalance && userData.bonusBalance > 0 && (
+                        <div className="bg-neon-purple/20 border border-neon-purple/30 px-1.5 py-0.5 rounded flex items-center justify-center">
+                          <span className="text-[7px] font-black uppercase text-neon-purple leading-none">Bônus</span>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  <button 
-                    onClick={() => setShowWithdraw(true)}
-                    className="bg-white/5 text-white/60 hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border border-white/5 transition-all"
-                  >
-                    Saque
-                  </button>
-                  <button 
-                    onClick={() => setShowDeposit(true)}
-                    className="bg-neon-green text-black px-4 py-1.5 rounded-lg text-xs font-black hover:brightness-110 active:scale-95 transition-all shadow-[0_0_15px_rgba(57,255,20,0.3)]"
-                  >
-                    PIX
-                  </button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setShowWithdraw(true)}
+                      className="bg-white/5 text-white/60 hover:text-white px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border border-white/5 transition-all"
+                    >
+                      Saque
+                    </button>
+                    <button 
+                      onClick={() => setShowDeposit(true)}
+                      className="bg-neon-green text-black px-4 py-2 rounded-lg text-xs font-black hover:brightness-110 active:scale-95 transition-all shadow-[0_0_15px_rgba(57,255,20,0.3)]"
+                    >
+                      PIX
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -299,12 +300,15 @@ export default function App() {
                 exit={{ opacity: 0 }}
                 className="w-full flex-1"
               >
-                <div className="sticky top-0 z-[60] bg-dark-bg/80 backdrop-blur-xl border-b border-white/5 p-4 flex items-center justify-between lg:hidden mb-4 rounded-xl mx-4 mt-4">
-                  <div className="flex items-center gap-3 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
+                <div className="sticky top-0 z-[60] bg-dark-bg/80 backdrop-blur-xl border-b border-white/5 p-4 flex items-center justify-between lg:hidden mb-4 rounded-xl mx-4 mt-4 shadow-2xl">
+                  <div className="flex items-center gap-3 bg-white/5 px-3 py-2 rounded-lg border border-white/10">
                     <Wallet size={14} className="text-neon-blue" />
-                    <span className="text-sm font-bold">R$ {(userData?.balance || 0).toFixed(2)}</span>
+                    <div className="flex flex-col">
+                      <span className="text-[7px] uppercase font-black text-white/40 leading-none mb-0.5">Saldo Total</span>
+                      <span className="text-xs font-black text-neon-green">R$ {((userData?.balance || 0) + (userData?.bonusBalance || 0)).toFixed(2)}</span>
+                    </div>
                   </div>
-                  <button onClick={() => setActiveGame(null)} className="text-white/40 text-xs font-black uppercase tracking-widest">Sair</button>
+                  <button onClick={() => setActiveGame(null)} className="bg-white/5 hover:bg-white/10 px-4 py-2 rounded-lg text-white/60 text-[10px] font-black uppercase tracking-widest transition-all">Sair</button>
                 </div>
 
                 <Suspense fallback={<LoadingSkeleton />}>
@@ -335,6 +339,7 @@ export default function App() {
 
         <DepositModal isOpen={showDeposit} onClose={() => setShowDeposit(false)} />
         <WithdrawModal isOpen={showWithdraw} onClose={() => setShowWithdraw(false)} />
+        <WelcomeGiftModal isOpen={showWelcomeGift} onClose={() => setShowWelcomeGift(false)} />
 
         {/* Footer Navigation - Hidden during game for clean mode */}
         {!isGameActive && (
@@ -703,22 +708,25 @@ function WithdrawModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => vo
 
                 <form onSubmit={handleWithdraw} className="space-y-4">
                   {userData?.withdrawalRolloverTarget && userData.withdrawalRolloverTarget > 0 && (
-                    <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-2">
+                    <div className="bg-neon-purple/5 border border-neon-purple/20 rounded-2xl p-4 mb-4">
                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Rollover de Saque</span>
-                          <span className="text-[10px] font-black text-neon-purple">
+                          <div className="flex items-center gap-2">
+                            <ShieldAlert size={14} className="text-neon-purple" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-white">Rollover de Saque</span>
+                          </div>
+                          <span className="text-xs font-black text-neon-purple">
                             {Math.min(100, ((userData.withdrawalRolloverProgress || 0) / userData.withdrawalRolloverTarget * 100)).toFixed(0)}%
                           </span>
                        </div>
-                       <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                       <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
                           <motion.div 
                              initial={{ width: 0 }}
                              animate={{ width: `${Math.min(100, ((userData.withdrawalRolloverProgress || 0) / userData.withdrawalRolloverTarget * 100))}%` }}
-                             className="h-full bg-neon-purple shadow-[0_0_10px_#bc13fe]"
+                             className="h-full bg-neon-purple shadow-[0_0_15px_#bc13fe]"
                           />
                        </div>
-                       <p className="text-[8px] text-white/20 mt-2 uppercase font-bold tracking-tight">
-                         Aposte R$ {Math.max(0, userData.withdrawalRolloverTarget - (userData.withdrawalRolloverProgress || 0)).toFixed(2)} para liberar
+                       <p className="text-[9px] text-white/40 mt-2 uppercase font-black tracking-tight">
+                         Faltam apostar <span className="text-neon-purple">R$ {Math.max(0, userData.withdrawalRolloverTarget - (userData.withdrawalRolloverProgress || 0)).toFixed(2)}</span> para liberar o saque deste saldo.
                        </p>
                     </div>
                   )}
@@ -799,5 +807,129 @@ function NavBtn({ active, onClick, icon, label }: { active: boolean, onClick: ()
         </>
       )}
     </button>
+  );
+}
+
+function WelcomeGiftModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
+  const { firebaseUser } = useAuth();
+  const [isClaiming, setIsClaiming] = useState(false);
+
+  const handleClaim = async () => {
+    if (!firebaseUser) return;
+    setIsClaiming(true);
+    try {
+      await updateDoc(doc(db, 'users', firebaseUser.uid), {
+        bonusBalance: increment(20),
+        bonusRolloverTarget: increment(200),
+        bonusRolloverProgress: 0,
+        claimedWelcomeBonus: true,
+        previewBonusV3: true,
+        updatedAt: serverTimestamp()
+      });
+      onClose();
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao resgatar recompensa');
+    } finally {
+      setIsClaiming(false);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/90 backdrop-blur-xl" 
+          />
+          
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.5, y: 100 }}
+            animate={{ 
+              opacity: 1, 
+              scale: 1, 
+              y: 0,
+            }}
+            exit={{ opacity: 0, scale: 0.5, y: 100 }}
+            className="relative z-10 w-full max-w-sm"
+          >
+            {/* Background Glow */}
+            <div className="absolute inset-0 bg-neon-green/20 blur-[100px] rounded-full animate-pulse" />
+            
+            <div className="glass-card relative overflow-hidden p-8 border-neon-green/30 text-center flex flex-col items-center">
+              {/* Header Design */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-neon-green to-transparent" />
+              <div className="bg-neon-green/10 text-neon-green text-[10px] font-black uppercase tracking-[0.3em] py-1 px-4 rounded-full border border-neon-green/20 mb-8">
+                Presente de Boas-Vindas
+              </div>
+
+              {/* Animated Box/Gift Icon */}
+              <motion.div
+                animate={{ 
+                  y: [0, -15, 0],
+                  rotate: [0, -1, 1, -1, 1, 0]
+                }}
+                transition={{ 
+                  y: { duration: 3, repeat: Infinity, ease: "easeInOut" },
+                  rotate: { duration: 0.5, repeat: Infinity, repeatDelay: 2 }
+                }}
+                className="relative mb-10"
+              >
+                <div className="absolute inset-0 bg-neon-green blur-3xl opacity-20 animate-pulse" />
+                <div className="w-24 h-24 bg-neon-green rounded-[2rem] flex items-center justify-center text-black shadow-[0_0_50px_rgba(57,255,20,0.4)] transform rotate-12 relative z-10">
+                   <Gift size={48} className="transform -rotate-12" />
+                </div>
+                {/* Floating Coins */}
+                <motion.div 
+                  animate={{ y: [0, -30, 0], opacity: [0, 1, 0] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="absolute -top-4 -right-4 bg-yellow-400 w-8 h-8 rounded-full flex items-center justify-center text-black font-black text-xs border-2 border-black"
+                >
+                  $
+                </motion.div>
+                <motion.div 
+                  animate={{ y: [0, -20, 0], opacity: [0, 1, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
+                  className="absolute top-10 -left-6 bg-yellow-400 w-6 h-6 rounded-full flex items-center justify-center text-black font-black text-[10px] border-2 border-black"
+                >
+                  $
+                </motion.div>
+              </motion.div>
+
+              <h2 className="text-4xl font-display font-black italic mb-2 tracking-tighter">VOCÊ GANHOU!</h2>
+              <div className="text-neon-green text-5xl font-display font-black italic mb-6">R$ 20,00</div>
+              
+              <p className="text-white/40 text-sm mb-10 max-w-xs leading-relaxed">
+                Parabéns! Como novo membro da <span className="text-white font-bold">Follbet</span>, você recebeu um bônus de iniciante para testar nossos jogos.
+              </p>
+
+              <div className="w-full space-y-4">
+                <button 
+                  onClick={handleClaim}
+                  disabled={isClaiming}
+                  className="w-full h-16 bg-neon-green text-black font-black uppercase tracking-widest text-sm rounded-2xl shadow-[0_20px_40px_rgba(57,255,20,0.3)] hover:scale-[1.03] active:scale-95 transition-all flex items-center justify-center gap-3"
+                >
+                  {isClaiming ? (
+                    <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      RESGATAR AGORA
+                      <Gift size={18} />
+                    </>
+                  )}
+                </button>
+                
+                <p className="text-[10px] text-white/20 uppercase font-bold tracking-[0.2em]">
+                  Rollover de 10x aplicado ao bônus
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }

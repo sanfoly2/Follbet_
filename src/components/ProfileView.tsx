@@ -67,49 +67,64 @@ export default function ProfileView({ onShowWithdraw }: { onShowWithdraw: () => 
                         <Wallet size={28} />
                     </div>
                     <div className="text-left">
-                        <p className="text-white/40 text-[10px] font-bold uppercase tracking-[0.2em] mb-1">Saldo Disponível</p>
+                        <p className="text-white/40 text-[10px] font-bold uppercase tracking-[0.2em] mb-1">Saldo Total</p>
                         <h3 className="text-3xl font-display font-black text-white italic">
-                            R$ {(user?.balance || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            R$ {((user?.balance || 0) + (user?.bonusBalance || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </h3>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
+                    {(user?.withdrawalRolloverTarget || 0) > 0 && (
+                        <div className="bg-white/5 border border-white/10 rounded-2xl p-4 w-full md:w-48">
+                            <div className="flex justify-between items-center mb-1.5">
+                                <p className="text-white/40 text-[9px] font-black uppercase tracking-widest leading-none">Rollover Saque</p>
+                                <p className="text-neon-blue font-black text-[10px]">
+                                    {Math.min(100, ((user?.withdrawalRolloverProgress || 0) / (user?.withdrawalRolloverTarget || 1) * 100)).toFixed(0)}%
+                                </p>
+                            </div>
+                            <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${Math.min(100, ((user?.withdrawalRolloverProgress || 0) / (user?.withdrawalRolloverTarget || 1) * 100))}%` }}
+                                    className="h-full bg-neon-blue shadow-[0_0_10px_rgba(0,255,255,0.5)]"
+                                />
+                            </div>
+                            <p className="text-[7px] text-white/20 mt-1.5 uppercase font-bold tracking-tight">
+                                Falta apostar R$ {Math.max(0, (user?.withdrawalRolloverTarget || 0) - (user?.withdrawalRolloverProgress || 0)).toFixed(2)}
+                            </p>
+                        </div>
+                    )}
+
+                    {(user?.bonusBalance || 0) > 0 && (
+                        <div className="bg-neon-purple/5 border border-neon-purple/20 rounded-2xl p-4 w-full md:w-48">
+                            <div className="flex justify-between items-center mb-1.5">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 bg-neon-purple rounded-full animate-pulse" />
+                                    <p className="text-neon-purple text-[9px] font-black uppercase tracking-widest leading-none">Bônus Ativo</p>
+                                </div>
+                                <p className="text-white font-black text-[10px]">
+                                    {Math.min(100, ((user?.bonusRolloverProgress || 0) / (user?.bonusRolloverTarget || 1) * 100)).toFixed(0)}%
+                                </p>
+                            </div>
+                            <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${Math.min(100, ((user?.bonusRolloverProgress || 0) / (user?.bonusRolloverTarget || 1) * 100))}%` }}
+                                    className="h-full bg-neon-purple shadow-[0_0_10px_rgba(188,19,254,0.5)]"
+                                />
+                            </div>
+                            <p className="text-[7px] text-white/30 mt-1.5 uppercase font-bold tracking-tight">
+                                R$ {(user?.bonusBalance || 0).toFixed(2)} em bônus
+                            </p>
+                        </div>
+                    )}
                     <button 
                         onClick={onShowWithdraw}
                         className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all"
                     >
                         Solicitar Saque
                     </button>
-                    {user?.bonusBalance && user.bonusBalance > 0 && (
-                    <div className="bg-neon-purple/10 border border-neon-purple/30 rounded-2xl p-4 flex-1 md:max-w-[280px]">
-                        <div className="flex justify-between items-center mb-1">
-                            <p className="text-neon-purple text-[8px] font-black uppercase tracking-widest leading-none">Saldo de Bônus</p>
-                            <p className="text-white font-display font-black text-xs">
-                                R$ {user.bonusBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </p>
-                        </div>
-                        
-                        {user.bonusRolloverTarget && user.bonusRolloverTarget > 0 && (
-                            <div className="mt-3">
-                                <div className="flex justify-between text-[7px] font-black uppercase text-white/40 mb-1 tracking-widest">
-                                    <span>Rollover</span>
-                                    <span>{((user.bonusRolloverProgress || 0) / user.bonusRolloverTarget * 100).toFixed(0)}%</span>
-                                </div>
-                                <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                                    <motion.div 
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${Math.min(100, ((user.bonusRolloverProgress || 0) / user.bonusRolloverTarget * 100))}%` }}
-                                        className="h-full bg-neon-purple shadow-[0_0_10px_#bc13fe]"
-                                    />
-                                </div>
-                                <p className="text-[6px] text-white/20 mt-1 uppercase font-bold tracking-tighter">
-                                    Faltam R$ {Math.max(0, user.bonusRolloverTarget - (user.bonusRolloverProgress || 0)).toFixed(2)} para liberar
-                                </p>
-                            </div>
-                        )}
-                    </div>
-                )}
                 </div>
             </div>
         </div>
