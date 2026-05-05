@@ -137,9 +137,6 @@ export default function AviatorGame({ onBack }: AviatorGameProps) {
       return alert('Saldo insuficiente');
     }
 
-    // Atualização Otimista: Muda a tela IMEDIATAMENTE
-    setHasBet(true); 
-
     try {
       if (useBonus) {
         setIsBonusRound(true);
@@ -156,19 +153,14 @@ export default function AviatorGame({ onBack }: AviatorGameProps) {
           updatedAt: serverTimestamp()
         });
       }
+      setHasBet(true);
     } catch (err) {
-      // Se o banco falhar, reverte a interface
-      setHasBet(false);
       console.error(err);
     }
   };
 
   const handleCancelBet = async () => {
     if (!user || !hasBet || gameState !== 'betting') return;
-    
-    // Atualização Otimista: Volta o botão instantaneamente
-    setHasBet(false);
-
     try {
       if (isBonusRound) {
         await updateDoc(doc(firestore, 'users', user.userId), {
@@ -183,9 +175,8 @@ export default function AviatorGame({ onBack }: AviatorGameProps) {
           updatedAt: serverTimestamp()
         });
       }
+      setHasBet(false);
     } catch (err) {
-      // Reverte se der erro
-      setHasBet(true);
       console.error(err);
     }
   };
@@ -194,8 +185,6 @@ export default function AviatorGame({ onBack }: AviatorGameProps) {
     if (gameState !== 'running' || !hasBet || isCashedOut) return;
     
     const win = +(betAmount * multiplier).toFixed(2);
-    
-    // Atualiza a interface instantaneamente para travar o Cashout Duplo
     setWinAmount(win);
     setIsCashedOut(true);
     playSound('win');
@@ -210,7 +199,7 @@ export default function AviatorGame({ onBack }: AviatorGameProps) {
         await updateBalance(win);
       }
     } catch (err) {
-      console.error("Erro no cashout", err);
+      console.error(err);
     }
   };
 
@@ -397,15 +386,13 @@ export default function AviatorGame({ onBack }: AviatorGameProps) {
                  <div className="flex items-center justify-between">
                     <div className="flex bg-white/5 rounded-xl p-1 w-full max-w-[200px]">
                        {[10, 50, 100, 200].map(amt => (
-                         <motion.button 
+                         <button 
                           key={amt} 
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
                           onClick={() => setBetAmount(amt)}
                           className={`flex-1 py-2 rounded-lg text-[10px] font-black transition-all ${betAmount === amt ? 'bg-white/10 text-neon-green shadow-inner' : 'text-white/40 hover:text-white'}`}
                          >
                            {amt}
-                         </motion.button>
+                         </button>
                        ))}
                     </div>
                     <div className="text-right">
@@ -421,31 +408,27 @@ export default function AviatorGame({ onBack }: AviatorGameProps) {
 
                  <div className="h-24">
                    {gameState === 'running' && hasBet && !isCashedOut ? (
-                     <motion.button
-                       whileHover={{ scale: 1.03 }}
-                       whileTap={{ scale: 0.95 }}
+                     <button
                        onClick={handleCashout}
-                       className="w-full h-full bg-neon-purple text-black font-display font-black italic rounded-3xl shadow-[0_20px_50px_rgba(188,19,254,0.4)] transition-all overflow-hidden relative group flex flex-col items-center justify-center border-b-4 border-black/20"
+                       className="w-full h-full bg-neon-purple text-black font-display font-black italic rounded-3xl shadow-[0_20px_50px_rgba(188,19,254,0.4)] hover:scale-[1.03] active:scale-95 transition-all overflow-hidden relative group flex flex-col items-center justify-center border-b-4 border-black/20"
                      >
                         <span className="text-[10px] uppercase tracking-[0.3em] font-black opacity-60 mb-1">CASH OUT</span>
                         <span className="text-3xl font-black">R$ {(betAmount * multiplier).toFixed(2)}</span>
-                     </motion.button>
+                     </button>
                    ) : isCashedOut ? (
                      <div className="w-full h-full bg-white/5 border border-white/10 rounded-3xl flex flex-col items-center justify-center grayscale opacity-50">
                         <span className="text-[10px] uppercase font-black tracking-widest text-neon-green mb-1">SACADO COM SUCESSO</span>
                         <span className="text-2xl font-display font-black">R$ {winAmount.toFixed(2)}</span>
                      </div>
                    ) : (
-                     <motion.button
-                       whileHover={{ scale: 1.03 }}
-                       whileTap={{ scale: 0.95 }}
+                     <button
                        onClick={handleBet}
                        disabled={gameState === 'running' || gameState === 'crashed'}
                        className={`w-full h-full font-display font-black italic rounded-3xl transition-all flex flex-col items-center justify-center border-b-4 border-black/20 
                         ${hasBet && gameState === 'betting'
                           ? 'bg-red-500 text-white shadow-[0_20px_40px_rgba(239,68,68,0.3)]' 
                           : (!hasBet && gameState === 'betting')
-                            ? 'bg-neon-green text-black shadow-[0_20px_40px_rgba(57,255,20,0.3)]'
+                            ? 'bg-neon-green text-black shadow-[0_20px_40px_rgba(57,255,20,0.3)] hover:scale-[1.03] active:scale-95'
                             : 'bg-white/5 text-white/10 grayscale cursor-not-allowed'
                         }`}
                      >
@@ -455,7 +438,7 @@ export default function AviatorGame({ onBack }: AviatorGameProps) {
                        <span className="text-2xl uppercase">
                         {hasBet ? 'CANCELAR' : 'APOSTAR'}
                        </span>
-                     </motion.button>
+                     </button>
                    )}
                  </div>
               </div>
@@ -499,4 +482,13 @@ export default function AviatorGame({ onBack }: AviatorGameProps) {
                 ) || history.map((h, i) => (
                   <div key={i} className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/5">
                      <span className="text-[10px] text-white/40">{h.time}</span>
-                     <span className={`font-black text-sm ${h.multiplier >= 2 ? 'text-neon-
+                     <span className={`font-black text-sm ${h.multiplier >= 2 ? 'text-neon-purple' : 'text-neon-blue'}`}>{h.multiplier.toFixed(2)}x</span>
+                  </div>
+                ))}
+             </div>
+           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
