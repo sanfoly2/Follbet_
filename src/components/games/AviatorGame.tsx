@@ -15,6 +15,7 @@ const AviatorGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [betAmount, setBetAmount] = useState<number>(10);
   const [autoCashout, setAutoCashout] = useState<number>(0);
   const [gameState, setGameState] = useState<'betting' | 'waiting' | 'running' | 'crashed' | 'won'>('betting');
+  const [hasBet, setHasBet] = useState(false);
   const [multiplier, setMultiplier] = useState<number>(1.0);
   const [crashPoint, setCrashPoint] = useState<number>(0);
   const [winAmount, setWinAmount] = useState<number>(0);
@@ -75,6 +76,8 @@ const AviatorGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     let interval: NodeJS.Timeout;
     if (gameState === 'betting') {
       setWaitingTime(10);
+      setHasBet(false);
+      setWinAmount(0);
       interval = setInterval(() => {
         setWaitingTime(prev => {
           if (prev <= 1) {
@@ -104,7 +107,7 @@ const AviatorGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   };
 
   const handleBet = async () => {
-    if (!user || gameState !== 'betting') return;
+    if (!user || gameState !== 'betting' || hasBet) return;
     if (betAmount < 1) return alert('Valor mínimo R$ 1,00');
 
     let useBonus = false;
@@ -117,6 +120,7 @@ const AviatorGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     }
 
     setIsBonusRound(useBonus);
+    setHasBet(true);
 
     try {
       const updateObj: any = { updatedAt: serverTimestamp() };
@@ -169,8 +173,8 @@ const AviatorGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
     const tick = () => {
       const elapsed = (Date.now() - startTimeRef.current) / 1000;
-      // Exponential curve: 1.06 ^ seconds
-      const currentMult = Math.pow(1.06, elapsed * 10);
+      // Adjusted exponential curve for a calmer, more emotional growth
+      const currentMult = Math.pow(1.03, elapsed * 15);
       
       setMultiplier(currentMult);
 
@@ -202,6 +206,20 @@ const AviatorGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const draw = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, elapsed: number, currentMult: number) => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
+    // Parallax Stars Background
+    const time = Date.now() / 1000;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+    for(let i = 0; i < 50; i++) {
+        // Horizontal speed increased for more 'emotion' and feel of movement
+        const x = (i * 137.5 - time * 50) % canvas.width;
+        const y = (i * 243.1 + Math.sin(time + i) * 20) % canvas.height;
+        const size = (i % 2) + 1;
+        ctx.beginPath();
+        const adjustedX = x < 0 ? canvas.width + x : x;
+        ctx.arc(adjustedX, y, size, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
     const margin = 50;
     const width = canvas.width - margin * 2;
     const height = canvas.height - margin * 2;
@@ -210,7 +228,7 @@ const AviatorGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     const maxVisMult = multiplier > 10 ? multiplier * 1.2 : 10;
 
     // Draw Grid (Performance: simplified)
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     for(let i = 1; i < 5; i++) {
@@ -225,8 +243,8 @@ const AviatorGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     ctx.stroke();
 
     // Draw Axis
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(margin, margin);
     ctx.lineTo(margin, canvas.height - margin);
@@ -237,7 +255,7 @@ const AviatorGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     ctx.save();
     ctx.strokeStyle = '#bc13fe';
     ctx.lineWidth = 4;
-    ctx.shadowBlur = 15;
+    ctx.shadowBlur = 20;
     ctx.shadowColor = '#bc13fe';
     ctx.beginPath();
     ctx.moveTo(margin, canvas.height - margin);
@@ -245,7 +263,7 @@ const AviatorGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     const activePoints = 60; // Fixed number of points for smoothness
     for(let i = 0; i <= activePoints; i++) {
       const t = (elapsed * (i / activePoints));
-      const m = Math.pow(1.06, t * 10);
+      const m = Math.pow(1.03, t * 15);
       
       const px = margin + (width * (i / activePoints));
       const py = (canvas.height - margin) - (height * (m - 1) / (maxVisMult - 1));
@@ -466,21 +484,21 @@ const AviatorGame: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                       </div>
                    </div>
 
-                   {gameState === 'running' ? (
+                   {gameState === 'running' && hasBet ? (
                      <button
                        onClick={handleCashout}
                        className="w-full h-20 bg-neon-purple text-black font-display font-black italic text-xl rounded-2xl shadow-[0_0_30px_#bc13fe] hover:scale-[1.02] active:scale-95 transition-all overflow-hidden relative group"
                      >
                         <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12" />
-                        <span className="relative z-10">SACAR R$ {(betAmount * multiplier).toFixed(2)}</span>
+                        <span className="relative z-10 uppercase tracking-tighter">SACAR R$ {(betAmount * multiplier).toFixed(2)}</span>
                      </button>
                    ) : (
                      <button
                        onClick={handleBet}
-                       disabled={gameState !== 'betting'}
+                       disabled={gameState !== 'betting' || hasBet}
                        className="w-full h-20 bg-neon-green text-black font-display font-black italic text-2xl rounded-2xl shadow-[0_0_30px_rgba(57,255,20,0.2)] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30 disabled:scale-100 disabled:shadow-none"
                      >
-                       APOSTAR
+                       {hasBet ? 'APOSTA REALIZADA' : 'FAZER APOSTA'}
                      </button>
                    )}
                 </div>
