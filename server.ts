@@ -75,7 +75,7 @@ async function startServer() {
     console.log('Rodando em modo DESENVOLVIMENTO com Vite middleware');
   } else {
     // Ambiente de Produção (Render / Linux)
-    const distPath = path.join(process.cwd(), 'dist');
+    const distPath = path.join(__dirname, 'dist');
     app.use(express.static(distPath));
 
     // Fallback para SPA (Single Page Application)
