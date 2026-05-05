@@ -13,6 +13,8 @@ import gameRoutes from './server/routes/games.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+import requestIp from 'request-ip';
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -20,14 +22,23 @@ async function startServer() {
   // Configuração para permitir CORS e JSON
   app.use(express.json());
   app.use(cookieParser());
+  app.use(requestIp.mw());
 
-  // Proxy route for ALL external calls to Render (Pix, Check Payment, etc)
-  // This avoids CORS issues while keeping the logic on the existing Render backend
-  app.use('/api/external', async (req, res) => {
-    // req.url contains the path after /api/external
-    // If the call is /api/external/pix, req.url is /pix
+  // API Routes
+  const apiRouter = express.Router();
+  apiRouter.use('/auth', authRoutes);
+  apiRouter.use('/games', gameRoutes);
+  apiRouter.use('/pix', pixRoutes);
+
+  // Health check providing IP
+  apiRouter.get('/health', (req, res) => {
+    const clientIp = req.clientIp;
+    res.json({ status: 'ok', ip: clientIp });
+  });
+  
+  // External proxy fallback if path not found in local API
+  apiRouter.use('/external', async (req, res) => {
     const targetUrl = `https://follbet.onrender.com${req.url}`;
-    
     try {
       const fetchOptions: RequestInit = {
         method: req.method,
@@ -53,13 +64,14 @@ async function startServer() {
       }
     } catch (error) {
       console.error('Proxy Error:', error);
-      res.status(500).json({ error: 'Erro ao conectar ao servidor backend (Render)' });
+      res.status(500).json({ error: 'Erro ao conectar ao servidor backend externo' });
     }
   });
 
-  // Auth and Game Routes (Local)
-  app.use('/auth', authRoutes);
-  app.use('/api/games', gameRoutes);
+  app.use('/api', apiRouter);
+
+  // Legacy/other routes
+  app.use('/auth', authRoutes); // Keep for compatibility if needed
   app.use('/', authRoutes);
 
   // Rota de saúde para o Render

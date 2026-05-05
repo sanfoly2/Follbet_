@@ -10,7 +10,7 @@ export async function fetchUserProfile(uid: string) {
 }
 
 const IS_DEV = import.meta.env.DEV;
-export const API_URL = "/api/external";
+export const API_URL = "/api";
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   // Ensure endpoint starts with a slash or is absolute
