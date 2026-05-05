@@ -119,65 +119,89 @@ export default function AviatorGame({ onBack }: AviatorGameProps) {
   }, [soundEnabled]);
 
   const handleBet = async () => {
-    if (!user || hasBet) {
-      if (hasBet && gameState === 'betting') {
-        return handleCancelBet();
-      }
+    if (!user) return alert('ERRO: O utilizador não foi encontrado no contexto (user é null).');
+    
+    if (hasBet) {
+      if (gameState === 'betting') return handleCancelBet();
       return;
     }
 
     if (betAmount < 1) return alert('Valor mínimo R$ 1,00');
 
+    const userBal = user.balance || 0;
+    const bonusBal = user.bonusBalance || 0;
+
     let useBonus = false;
-    if ((user.balance || 0) >= betAmount) {
+    if (userBal >= betAmount) {
       useBonus = false;
-    } else if ((user.bonusBalance || 0) >= betAmount) {
+    } else if (bonusBal >= betAmount) {
       useBonus = true;
     } else {
-      return alert('Saldo insuficiente');
+      return alert(`Saldo insuficiente. Saldo atual: R$ ${userBal}`);
     }
 
+    // Atualização Otimista
+    setHasBet(true); 
+
     try {
+      // Prevenção de erro caso a propriedade seja uid em vez de userId
+      const uid = user.userId || (user as any).uid;
+      if (!uid) throw new Error("ID do utilizador não encontrado no objeto user.");
+
       if (useBonus) {
         setIsBonusRound(true);
-        await updateDoc(doc(firestore, 'users', user.userId), {
+        await updateDoc(doc(firestore, 'users', uid), {
           bonusBalance: increment(-betAmount),
           bonusRolloverProgress: increment(betAmount),
           updatedAt: serverTimestamp()
         });
       } else {
         setIsBonusRound(false);
-        await updateBalance(-betAmount);
-        await updateDoc(doc(firestore, 'users', user.userId), {
-          withdrawalRolloverProgress: increment(betAmount),
-          updatedAt: serverTimestamp()
-        });
+        if (typeof updateBalance === 'function') {
+          await updateBalance(-betAmount);
+        } else {
+          // Fallback seguro caso a função do Contexto não exista
+          await updateDoc(doc(firestore, 'users', uid), {
+            balance: increment(-betAmount),
+            withdrawalRolloverProgress: increment(betAmount),
+            updatedAt: serverTimestamp()
+          });
+        }
       }
-      setHasBet(true);
-    } catch (err) {
+    } catch (err: any) {
+      setHasBet(false); // Reverte o botão se houver erro
+      alert(`ERRO AO APOSTAR: ${err.message || 'Erro desconhecido ao conectar com a base de dados.'}`);
       console.error(err);
     }
   };
 
   const handleCancelBet = async () => {
     if (!user || !hasBet || gameState !== 'betting') return;
+    
+    setHasBet(false);
+
     try {
+      const uid = user.userId || (user as any).uid;
       if (isBonusRound) {
-        await updateDoc(doc(firestore, 'users', user.userId), {
+        await updateDoc(doc(firestore, 'users', uid), {
           bonusBalance: increment(betAmount),
           bonusRolloverProgress: increment(-betAmount),
           updatedAt: serverTimestamp()
         });
       } else {
-        await updateBalance(betAmount);
-        await updateDoc(doc(firestore, 'users', user.userId), {
-          withdrawalRolloverProgress: increment(-betAmount),
-          updatedAt: serverTimestamp()
-        });
+        if (typeof updateBalance === 'function') {
+          await updateBalance(betAmount);
+        } else {
+          await updateDoc(doc(firestore, 'users', uid), {
+            balance: increment(betAmount),
+            withdrawalRolloverProgress: increment(-betAmount),
+            updatedAt: serverTimestamp()
+          });
+        }
       }
-      setHasBet(false);
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      setHasBet(true);
+      alert(`ERRO AO CANCELAR: ${err.message}`);
     }
   };
 
@@ -185,21 +209,30 @@ export default function AviatorGame({ onBack }: AviatorGameProps) {
     if (gameState !== 'running' || !hasBet || isCashedOut) return;
     
     const win = +(betAmount * multiplier).toFixed(2);
+    
     setWinAmount(win);
     setIsCashedOut(true);
     playSound('win');
     
     try {
+      const uid = user!.userId || (user as any).uid;
       if (isBonusRound) {
-        await updateDoc(doc(firestore, 'users', user!.userId), {
+        await updateDoc(doc(firestore, 'users', uid), {
           bonusBalance: increment(win),
           updatedAt: serverTimestamp()
         });
       } else {
-        await updateBalance(win);
+        if (typeof updateBalance === 'function') {
+          await updateBalance(win);
+        } else {
+          await updateDoc(doc(firestore, 'users', uid), {
+            balance: increment(win),
+            updatedAt: serverTimestamp()
+          });
+        }
       }
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      alert(`ERRO NO CASH OUT: ${err.message}`);
     }
   };
 
