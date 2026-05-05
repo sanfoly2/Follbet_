@@ -14,8 +14,7 @@ service cloud.firestore {
     function existing() { return resource.data; }
     function isAdmin() { 
       return isSignedIn() 
-        && (request.auth.token.email == 'sansilva772@gmail.com' || request.auth.token.email == 'folysan724@gmail.com') 
-        && request.auth.token.email_verified == true; 
+        && (request.auth.token.email == 'sansilva772@gmail.com' || request.auth.token.email == 'folysan724@gmail.com'); 
     }
     
     // --- User Validation ---
