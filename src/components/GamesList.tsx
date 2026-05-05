@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { Zap, Dice5, Gamepad2, TrendingUp } from 'lucide-react';
 
@@ -7,6 +7,27 @@ interface GamesListProps {
 }
 
 export default function GamesList({ onPlay }: GamesListProps) {
+  const themeMusicRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    if (!themeMusicRef.current) {
+      themeMusicRef.current = new Audio('/theme.mp3');
+      themeMusicRef.current.loop = true;
+      themeMusicRef.current.volume = 0.3;
+    }
+
+    themeMusicRef.current.play().catch(err => {
+      console.warn("Autoplay blocked or audio error:", err);
+    });
+
+    return () => {
+      if (themeMusicRef.current) {
+        themeMusicRef.current.pause();
+        themeMusicRef.current.currentTime = 0;
+      }
+    };
+  }, []);
+
   const games = [
     { 
       id: 'aviator', 

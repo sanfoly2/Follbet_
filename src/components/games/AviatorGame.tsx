@@ -45,52 +45,41 @@ export default function AviatorGame({ onBack }: AviatorGameProps) {
   const startTimeRef = useRef<number>(0);
   const crashPointRef = useRef<number>(0);
   const audioRefs = useRef<{
-    climb: HTMLAudioElement;
     crash: HTMLAudioElement;
     win: HTMLAudioElement;
   }>({
-    climb: new Audio('/climb.mp3'),
     crash: new Audio('/crash.mp3'),
     win: new Audio('/win.mp3')
   });
 
   // Setup audio
   useEffect(() => {
-    const { climb, crash, win } = audioRefs.current;
-    climb.loop = true;
-    climb.volume = 0.3;
+    const { crash, win } = audioRefs.current;
     crash.volume = 0.5;
     win.volume = 0.6;
 
     // cleanup on unmount
     return () => {
-      climb.pause();
       crash.pause();
       win.pause();
-      climb.currentTime = 0;
       crash.currentTime = 0;
       win.currentTime = 0;
     };
   }, []);
 
-  const playSound = (type: 'climb' | 'crash' | 'win') => {
+  const playSound = (type: 'crash' | 'win') => {
     if (!soundEnabled) return;
     try {
-      if (type === 'climb') {
-        audioRefs.current.climb.play().catch(() => {});
-      } else {
-        audioRefs.current[type].currentTime = 0;
-        audioRefs.current[type].play().catch(() => {});
-      }
+      audioRefs.current[type].currentTime = 0;
+      audioRefs.current[type].play().catch(() => {});
     } catch (e) {
       console.error("Audio playback error", e);
     }
   };
 
-  const stopSound = (type: 'climb' | 'crash' | 'win') => {
+  const stopSound = (type: 'crash' | 'win') => {
     try {
       audioRefs.current[type].pause();
-      if (type === 'climb') audioRefs.current[type].currentTime = 0;
     } catch (e) {}
   };
 
@@ -114,7 +103,6 @@ export default function AviatorGame({ onBack }: AviatorGameProps) {
     crashPointRef.current = generateCrashPoint();
     setGameState('running');
     startTimeRef.current = Date.now();
-    playSound('climb');
     animate();
   }, [soundEnabled]);
 
@@ -267,7 +255,6 @@ export default function AviatorGame({ onBack }: AviatorGameProps) {
       setMultiplier(currentMult);
 
       if (currentMult >= crashPointRef.current) {
-        stopSound('climb');
         playSound('crash');
         setGameState('crashed');
         setMultiplier(crashPointRef.current);
