@@ -323,8 +323,20 @@ export default function GatesOfFollGame({ onBack }: GatesOfFollGameProps) {
   };
 
   useEffect(() => {
-    if (freeSpinsRemaining > 0 && !isProcessing) {
-      const timer = setTimeout(() => handleSpin(true), 1500);
+    return () => {
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close().catch(console.error);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (freeSpinsRemaining > 0 && !isProcessing && !processingRef.current) {
+      const timer = setTimeout(() => {
+        if (!processingRef.current && freeSpinsRemaining > 0) {
+          handleSpin(true);
+        }
+      }, 1500);
       return () => clearTimeout(timer);
     }
   }, [freeSpinsRemaining, isProcessing]);
@@ -445,11 +457,11 @@ export default function GatesOfFollGame({ onBack }: GatesOfFollGameProps) {
 
            <button
             onClick={() => handleSpin()}
-            disabled={isProcessing || (freeSpinsRemaining > 0)}
+            disabled={isProcessing}
             className={`w-full py-6 rounded-3xl font-display font-black italic text-2xl uppercase tracking-widest transition-all border-b-8 border-black/30
               ${isProcessing ? 'bg-white/5 text-white/20' : 'bg-gradient-to-b from-[#E5C158] to-[#B8942E] text-black shadow-[0_20px_40px_rgba(212,175,55,0.3)] active:translate-y-1 active:border-b-4 hover:scale-[1.02]'}`}
            >
-            {isProcessing ? (freeSpinsRemaining > 0 ? 'CASCATEANDO...' : 'CASCATEANDO...') : (freeSpinsRemaining > 0 ? `${freeSpinsRemaining} GRÁTIS` : 'GIRAR AGORA')}
+            {isProcessing ? (freeSpinsRemaining > 0 ? 'CASCATEANDO...' : 'CASCATEANDO...') : (freeSpinsRemaining > 0 ? `${freeSpinsRemaining} GRÁTIS (TOCAR)` : 'GIRAR AGORA')}
            </button>
         </div>
 
