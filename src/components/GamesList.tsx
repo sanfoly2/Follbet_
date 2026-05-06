@@ -1,30 +1,147 @@
 import React, { useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Zap, Dice5, Gamepad2, TrendingUp, Lock, Sparkles } from 'lucide-react';
+import { Zap, TrendingUp } from 'lucide-react';
 
 interface GamesListProps {
   onPlay: (id: string) => void;
 }
 
 export default function GamesList({ onPlay }: GamesListProps) {
-  const themeMusicRef = useRef<HTMLAudioElement | null>(null);
+  const menuAudioCtxRef = useRef<AudioContext | null>(null);
+  const isPlayingRef = useRef(false);
 
   useEffect(() => {
-    if (!themeMusicRef.current) {
-      themeMusicRef.current = new Audio('/theme.mp3');
-      themeMusicRef.current.loop = true;
-      themeMusicRef.current.volume = 0.3;
-    }
+    const startMenuMusic = () => {
+      if (isPlayingRef.current) return;
+      
+      if (!menuAudioCtxRef.current) {
+        menuAudioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      
+      const ctx = menuAudioCtxRef.current;
+      if (ctx.state === 'suspended') ctx.resume();
 
-    themeMusicRef.current.play().catch(err => {
-      console.warn("Autoplay blocked or audio error:", err);
-    });
+      const masterGain = ctx.createGain();
+      masterGain.gain.value = 0.12; // Increased volume for better visibility
+      masterGain.connect(ctx.destination);
+
+      const playNote = (freq: number, startTime: number, duration: number, type: OscillatorType = 'triangle', volume = 0.2) => {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, startTime);
+        
+        g.gain.setValueAtTime(0, startTime);
+        g.gain.linearRampToValueAtTime(volume, startTime + 0.05);
+        g.gain.linearRampToValueAtTime(0, startTime + duration);
+        
+        osc.connect(g);
+        g.connect(masterGain);
+        osc.start(startTime);
+        osc.stop(startTime + duration);
+      };
+
+      const playDrum = (type: 'kick' | 'hihat', startTime: number) => {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        
+        if (type === 'kick') {
+          osc.frequency.setValueAtTime(150, startTime);
+          osc.frequency.exponentialRampToValueAtTime(0.01, startTime + 0.5);
+          g.gain.setValueAtTime(0.3, startTime);
+          g.gain.exponentialRampToValueAtTime(0.01, startTime + 0.5);
+          osc.connect(g);
+          g.connect(masterGain);
+          osc.start(startTime);
+          osc.stop(startTime + 0.5);
+        } else {
+          // Simple Hi-Hat using noise-like short burst
+          const bufferSize = ctx.sampleRate * 0.05;
+          const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+          const noise = ctx.createBufferSource();
+          noise.buffer = buffer;
+          const filter = ctx.createBiquadFilter();
+          filter.type = 'highpass';
+          filter.frequency.value = 8000;
+          noise.connect(filter);
+          const hg = ctx.createGain();
+          hg.gain.setValueAtTime(0.05, startTime);
+          hg.gain.exponentialRampToValueAtTime(0.01, startTime + 0.05);
+          filter.connect(hg);
+          hg.connect(masterGain);
+          noise.start(startTime);
+        }
+      };
+
+      const scheduleLoop = (time: number) => {
+        if (!isPlayingRef.current) return;
+        const beat = 0.5; // 120 BPM
+        
+        // Chord Progression: Cm9 - Fm9 - Bb13 - G7alt
+        const chords = [
+          [261.63, 311.13, 392.00, 466.16, 523.25], // Cm9 (C3, Eb3, G3, Bb3, D4)
+          [349.23, 415.30, 523.25, 622.25, 698.46], // Fm9
+          [466.16, 523.25, 587.33, 698.46, 783.99], // Bb13
+          [392.00, 466.16, 523.25, 587.33, 659.25]  // G7alt harmonics
+        ];
+
+        const progressions = [0, 1, 2, 3];
+        
+        progressions.forEach((pIdx, bar) => {
+          const startTime = time + bar * beat * 4;
+          const chord = chords[pIdx];
+          
+          // Play soft background chords
+          chord.forEach(freq => {
+            playNote(freq / 2, startTime, beat * 4, 'sine', 0.05);
+          });
+
+          // Rhythmic Kick and Hat
+          for (let i = 0; i < 4; i++) {
+            playDrum('kick', startTime + i * beat);
+            playDrum('hihat', startTime + i * beat + beat * 0.5);
+          }
+
+          // Melodic Flourish
+          if (bar === 0) {
+            playNote(523.25, startTime, beat, 'triangle', 0.1); // C4
+            playNote(587.33, startTime + beat * 0.5, beat, 'triangle', 0.08); // D4
+          } else if (bar === 1) {
+            playNote(622.25, startTime + beat, beat, 'triangle', 0.1); // Eb4
+          } else if (bar === 2) {
+            playNote(698.46, startTime + beat * 2, beat, 'triangle', 0.1); // F4
+          } else if (bar === 3) {
+            playNote(783.99, startTime + beat * 3, beat, 'triangle', 0.1); // G4
+          }
+        });
+
+        const loopDuration = beat * 16;
+        setTimeout(() => isPlayingRef.current && scheduleLoop(ctx.currentTime + 0.1), loopDuration * 1000 - 50);
+      };
+
+      isPlayingRef.current = true;
+      scheduleLoop(ctx.currentTime + 0.1);
+    };
+
+    const handleInteraction = () => {
+      startMenuMusic();
+      window.removeEventListener('click', handleInteraction);
+      window.removeEventListener('touchstart', handleInteraction);
+    };
+
+    window.addEventListener('click', handleInteraction);
+    window.addEventListener('touchstart', handleInteraction);
 
     return () => {
-      if (themeMusicRef.current) {
-        themeMusicRef.current.pause();
-        themeMusicRef.current.currentTime = 0;
+      isPlayingRef.current = false;
+      if (menuAudioCtxRef.current) {
+        menuAudioCtxRef.current.close().catch(console.error);
+        menuAudioCtxRef.current = null;
       }
+      window.removeEventListener('click', handleInteraction);
+      window.removeEventListener('touchstart', handleInteraction);
     };
   }, []);
 
@@ -37,24 +154,6 @@ export default function GamesList({ onPlay }: GamesListProps) {
       description: 'Voe alto e saque antes do crash',
       bgGradient: 'from-[#6366f1] via-[#a855f7] to-[#ec4899]',
       accent: 'text-neon-purple'
-    },
-    { 
-      id: 'lucky-vault', 
-      title: 'Lucky Vault', 
-      color: 'green', 
-      icon: <Lock />, 
-      description: 'Abra o cofre e multiplique o seu ouro',
-      bgGradient: 'from-[#059669] via-[#10b981] to-[#34d399]',
-      accent: 'text-neon-green'
-    },
-    { 
-      id: 'gates-of-foll', 
-      title: 'Gates of Foll', 
-      color: 'gold', 
-      icon: <Sparkles />, 
-      description: 'O deus Foll abençoa quem ousa girar',
-      bgGradient: 'from-[#B8942E] via-[#D4AF37] to-[#E5C158]',
-      accent: 'text-yellow-500'
     }
   ];
 
@@ -76,7 +175,7 @@ export default function GamesList({ onPlay }: GamesListProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
         {games.map((game, index) => (
           <motion.div 
             key={game.id} 
@@ -84,20 +183,20 @@ export default function GamesList({ onPlay }: GamesListProps) {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: index * 0.1, duration: 0.4, ease: "backOut" }}
             onClick={() => onPlay(game.id)}
-            className="group cursor-pointer relative h-[360px] rounded-[2.5rem] overflow-hidden p-8 flex flex-col justify-between transition-all hover:-translate-y-2"
+            className="group cursor-pointer relative h-[280px] rounded-[2rem] overflow-hidden p-5 flex flex-col justify-between transition-all hover:-translate-y-2"
           >
             {/* Background Layer */}
             <div className={`absolute inset-0 bg-gradient-to-br ${game.bgGradient} opacity-20 group-hover:opacity-30 transition-opacity duration-500`} />
             <div className="absolute inset-0 bg-[#0a0a0a]/80 backdrop-blur-sm" />
-            <div className={`absolute inset-0 border-2 border-white/5 group-hover:border-white/20 rounded-[2.5rem] transition-colors duration-500`} />
+            <div className={`absolute inset-0 border-2 border-white/5 group-hover:border-white/20 rounded-[2rem] transition-colors duration-500`} />
             
             {/* Geometric Accent */}
             <div className={`absolute -top-24 -right-24 w-64 h-64 bg-gradient-to-br ${game.bgGradient} rounded-full blur-[100px] opacity-20 group-hover:opacity-40 transition-opacity duration-700`} />
 
             <div className="relative z-10 flex flex-col h-full justify-between">
               <div className="flex justify-between items-start">
-                <div className={`w-16 h-16 rounded-[2rem] flex items-center justify-center bg-white/5 border border-white/10 ${game.accent} group-hover:scale-110 group-hover:bg-white/10 transition-all duration-500 shadow-2xl`}>
-                  {React.cloneElement(game.icon as React.ReactElement<any>, { size: 32 })}
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center bg-white/5 border border-white/10 ${game.accent} group-hover:scale-110 group-hover:bg-white/10 transition-all duration-500 shadow-2xl`}>
+                  {React.cloneElement(game.icon as React.ReactElement<any>, { size: 24 })}
                 </div>
                 <div className="flex flex-col items-end">
                   <div className="bg-white/5 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-[0.2em] text-white/40 border border-white/5">
@@ -107,17 +206,17 @@ export default function GamesList({ onPlay }: GamesListProps) {
               </div>
               
               <div className="space-y-2">
-                <h3 className="text-3xl font-display font-black italic uppercase tracking-tighter text-white group-hover:text-neon-green transition-colors duration-300">
+                <h3 className="text-xl font-display font-black italic uppercase tracking-tighter text-white group-hover:text-neon-green transition-colors duration-300">
                   {game.title}
                 </h3>
-                <p className="text-white/40 text-sm font-medium pr-8">{game.description}</p>
+                <p className="text-white/40 text-[10px] font-medium leading-tight line-clamp-2">{game.description}</p>
                 <div className="flex items-center gap-2 pt-2">
                   <div className="w-1.5 h-1.5 bg-neon-green rounded-full shadow-[0_0_8px_#39ff14] animate-pulse" />
                   <p className="text-neon-green text-[10px] font-black uppercase tracking-[0.2em]">Até 1000x</p>
                 </div>
               </div>
 
-              <div className="pt-6">
+              <div className="pt-4">
                 <button 
                   className="w-full h-14 rounded-2xl flex items-center justify-center font-black uppercase tracking-widest text-[10px] bg-white/5 border border-white/5 group-hover:bg-neon-green group-hover:text-black group-hover:shadow-[0_10px_30px_rgba(57,255,20,0.3)] group-hover:border-transparent transition-all duration-500 active:scale-95"
                 >

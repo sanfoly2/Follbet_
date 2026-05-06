@@ -404,8 +404,8 @@ export default function AviatorGame({ onBack }: AviatorGameProps) {
            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="glass-card p-6 flex flex-col gap-4">
                  <div className="flex items-center justify-between">
-                    <div className="flex bg-white/5 rounded-xl p-1 w-full max-w-[200px]">
-                       {[10, 50, 100, 200].map(amt => (
+                    <div className="flex bg-white/5 rounded-xl p-1 w-full max-w-[240px]">
+                       {[1, 5, 10, 50, 100].map(amt => (
                          <button 
                           key={amt} 
                           onClick={() => setBetAmount(amt)}
