@@ -29,6 +29,12 @@ const GamesList = lazy(() => import('./components/GamesList.js'));
 const ProfileView = lazy(() => import('./components/ProfileView.js'));
 const ReferralView = lazy(() => import('./components/ReferralView.js'));
 const AviatorGame = lazy(() => import('./components/games/AviatorGame.js'));
+const NeonFruitGame = lazy(() => import('./components/games/NeonFruitBurstGame.js'));
+const FortuneTigerGame = lazy(() => import('./components/games/FortuneTigerGame.js'));
+const FortuneOxGame = lazy(() => import('./components/games/FortuneOxGame.js'));
+const FortuneRabbitGame = lazy(() => import('./components/games/FortuneRabbitGame.js'));
+const FortuneMouseGame = lazy(() => import('./components/games/FortuneMouseGame.js'));
+const FortuneDragonGame = lazy(() => import('./components/games/FortuneDragonGame.js'));
 const LoadingScreen = lazy(() => import('./components/LoadingScreen.js'));
 const AdminPanel = lazy(() => import('./components/AdminPanel.js'));
 
@@ -351,6 +357,89 @@ export default function App() {
 
                 <Suspense fallback={<LoadingSkeleton />}>
                   <AviatorGame onBack={() => setActiveGame(null)} />
+                </Suspense>
+              </motion.div>
+            ) : activeGame === 'neon-fruit' ? (
+              <motion.div
+                key="neon-fruit-wrapper"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-full h-full flex-1"
+              >
+                <div className="fixed top-0 left-0 right-0 z-[60] bg-dark-bg/80 backdrop-blur-xl border-b border-white/5 p-4 flex items-center justify-between lg:hidden shadow-2xl">
+                  <div className="flex items-center gap-3 bg-white/5 px-3 py-2 rounded-lg border border-white/10">
+                    <Wallet size={14} className="text-neon-blue" />
+                    <div className="flex flex-col">
+                      <span className="text-[7px] uppercase font-black text-white/40 leading-none mb-0.5">Saldo Total</span>
+                      <span className="text-xs font-black text-neon-green">R$ {((userData?.balance || 0) + (userData?.bonusBalance || 0)).toFixed(2)}</span>
+                    </div>
+                  </div>
+                  <button onClick={() => setActiveGame(null)} className="bg-white/5 hover:bg-white/10 px-4 py-2 rounded-lg text-white/60 text-[10px] font-black uppercase tracking-widest transition-all">Sair</button>
+                </div>
+
+                <Suspense fallback={<LoadingSkeleton />}>
+                  <NeonFruitGame onBack={() => setActiveGame(null)} />
+                </Suspense>
+              </motion.div>
+            ) : activeGame === 'fortune-tiger' ? (
+              <motion.div
+                key="fortune-tiger-wrapper"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-full h-full flex-1"
+              >
+                <Suspense fallback={<LoadingSkeleton />}>
+                  <FortuneTigerGame onBack={() => setActiveGame(null)} />
+                </Suspense>
+              </motion.div>
+            ) : activeGame === 'fortune-ox' ? (
+              <motion.div
+                key="fortune-ox-wrapper"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-full h-full flex-1"
+              >
+                <Suspense fallback={<LoadingSkeleton />}>
+                  <FortuneOxGame onBack={() => setActiveGame(null)} />
+                </Suspense>
+              </motion.div>
+            ) : activeGame === 'fortune-rabbit' ? (
+              <motion.div
+                key="fortune-rabbit-wrapper"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-full h-full flex-1"
+              >
+                <Suspense fallback={<LoadingSkeleton />}>
+                  <FortuneRabbitGame onBack={() => setActiveGame(null)} />
+                </Suspense>
+              </motion.div>
+            ) : activeGame === 'fortune-mouse' ? (
+              <motion.div
+                key="fortune-mouse-wrapper"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-full h-full flex-1"
+              >
+                <Suspense fallback={<LoadingSkeleton />}>
+                  <FortuneMouseGame onBack={() => setActiveGame(null)} />
+                </Suspense>
+              </motion.div>
+            ) : activeGame === 'fortune-dragon' ? (
+              <motion.div
+                key="fortune-dragon-wrapper"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-full h-full flex-1"
+              >
+                <Suspense fallback={<LoadingSkeleton />}>
+                  <FortuneDragonGame onBack={() => setActiveGame(null)} />
                 </Suspense>
               </motion.div>
             ) : (

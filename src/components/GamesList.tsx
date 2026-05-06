@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Zap, TrendingUp } from 'lucide-react';
+import { Zap, TrendingUp, Sparkles } from 'lucide-react';
 
 interface GamesListProps {
   onPlay: (id: string) => void;
@@ -154,6 +154,60 @@ export default function GamesList({ onPlay }: GamesListProps) {
       description: 'Voe alto e saque antes do crash',
       bgGradient: 'from-[#6366f1] via-[#a855f7] to-[#ec4899]',
       accent: 'text-neon-purple'
+    },
+    { 
+      id: 'fortune-tiger', 
+      title: 'Fortune Tiger', 
+      color: 'gold', 
+      icon: <Sparkles />, 
+      description: 'O Jogo do Tigre com cartinha e multiplicador',
+      bgGradient: 'from-[#FFCC00] via-[#FF4444] to-[#8B0000]',
+      accent: 'text-[#FFCC00]'
+    },
+    { 
+      id: 'fortune-ox', 
+      title: 'Fortune Ox', 
+      color: 'red', 
+      icon: <TrendingUp />, 
+      description: 'O Touro da Fortuna com grandes ganhos',
+      bgGradient: 'from-[#FF4444] via-[#8B0000] to-[#3D0000]',
+      accent: 'text-[#FF4444]'
+    },
+    { 
+      id: 'fortune-rabbit', 
+      title: 'Fortune Rabbit', 
+      color: 'pink', 
+      icon: <Sparkles />, 
+      description: 'O Coelho traz sorte nas rodadas',
+      bgGradient: 'from-[#FF88CC] via-[#CC4499] to-[#661144]',
+      accent: 'text-[#FF88CC]'
+    },
+    { 
+      id: 'fortune-mouse', 
+      title: 'Fortune Mouse', 
+      color: 'gold', 
+      icon: <TrendingUp />, 
+      description: 'O Ratinho acumula tesouros',
+      bgGradient: 'from-[#FFD700] via-[#CCAA00] to-[#665500]',
+      accent: 'text-[#FFD700]'
+    },
+    { 
+      id: 'fortune-dragon', 
+      title: 'Fortune Dragon', 
+      color: 'orange', 
+      icon: <Zap />, 
+      description: 'O Dragão desperta com multiplicadores',
+      bgGradient: 'from-[#FF8800] via-[#8B4400] to-[#3D2200]',
+      accent: 'text-[#FF8800]'
+    },
+    { 
+      id: 'neon-fruit', 
+      title: 'Neon Fruit Burst', 
+      color: 'cyan', 
+      icon: <Sparkles />, 
+      description: 'Estouro de frutas neon com clusters e multiplicadores',
+      bgGradient: 'from-[#00e5ff] via-[#00ff66] to-[#0088ff]',
+      accent: 'text-[#00e5ff]'
     }
   ];
 
