@@ -44,7 +44,7 @@ export default function FortuneTigerGame({ onBack }: FortuneTigerProps) {
   const [showBonusCard, setShowBonusCard] = useState(false);
   const [isBonusActive, setIsBonusActive] = useState(false);
   const [multiplier, setMultiplier] = useState(1);
-  const [isRespinning, setIsRespinning] = useState(false);
+  const [bonusAttempts, setBonusAttempts] = useState(0);
   
   const processingRef = useRef(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -78,11 +78,19 @@ export default function FortuneTigerGame({ onBack }: FortuneTigerProps) {
   };
 
   const handleSpin = async (autoRespin = false) => {
-    if ((processingRef.current && !autoRespin) || !user) return;
+    // Prevent multiple parallel respin triggers
+    if (respinTimeoutRef.current) {
+      clearTimeout(respinTimeoutRef.current);
+      respinTimeoutRef.current = null;
+    }
+
+    if (processingRef.current && !autoRespin) return;
+    if (!user) return;
     
-    // Check balance only for non-bonus/non-respin spins
+    // Safety balance check
     if (!isBonusActive && !autoRespin) {
-      if ((user.balance || 0) < currentBet) {
+      const balance = (user.balance || 0) + (user.bonusBalance || 0);
+      if (balance < currentBet) {
         setMessage({ text: 'Saldo Insuficiente!', color: '#FF4444' });
         return;
       }
@@ -91,41 +99,46 @@ export default function FortuneTigerGame({ onBack }: FortuneTigerProps) {
     processingRef.current = true;
     setIsSpinning(true);
     setWinningLines([]);
-    setMessage(null);
+    
+    // Clear message only on fresh spin
+    if (!autoRespin) setMessage(null);
     initAudio();
 
     try {
       if (!isBonusActive && !autoRespin) {
         await updateBalance(-currentBet);
         playTone(400, 0.1);
-      } else {
-        // Free respin sound
-        playTone(500, 0.1, 'square');
+      } else if (autoRespin) {
+        setMessage({ text: 'RE-GIRANDO...', color: '#FFA500' });
+        playTone(500, 0.05, 'square');
       }
 
-      // Randomly trigger the "Cartinha" (Bonus Card) feature only on base game
-      if (!isBonusActive && !autoRespin && Math.random() < 0.08) { // 8% chance
+      // Bonus activation guard (8% chance on base game)
+      if (!isBonusActive && !autoRespin && Math.random() < 0.08) {
         setShowBonusCard(true);
         playTone(800, 0.5, 'triangle');
         await new Promise(r => setTimeout(r, 2000));
         setShowBonusCard(false);
         setIsBonusActive(true);
         setMultiplier(10);
+        setBonusAttempts(0);
       }
 
-      // Spin duration - shorter for turbo-like feel
-      await new Promise(r => setTimeout(r, 1000));
+      // UX: Spinning tension
+      await new Promise(r => setTimeout(r, 1200));
 
+      // Absolute safety: Force win after 4 failed bonus spins to avoid infinite loop
+      const isForcedWin = isBonusActive && bonusAttempts >= 4;
+      
       const newReels = [
-        Array.from({ length: 3 }, () => SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]),
-        Array.from({ length: 3 }, () => SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]),
-        Array.from({ length: 3 }, () => SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)])
+        Array.from({ length: 3 }, () => isForcedWin ? SYMBOLS[5] : SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]),
+        Array.from({ length: 3 }, () => isForcedWin ? SYMBOLS[5] : SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]),
+        Array.from({ length: 3 }, () => isForcedWin ? SYMBOLS[5] : SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)])
       ];
       
       setReels(newReels);
       playTone(300, 0.1);
 
-      // Check Wins
       const foundWins: number[] = [];
       let totalWin = 0;
 
@@ -133,7 +146,6 @@ export default function FortuneTigerGame({ onBack }: FortuneTigerProps) {
         const s1 = newReels[0][line[0]];
         const s2 = newReels[1][line[1]];
         const s3 = newReels[2][line[2]];
-
         const isWild = (s: any) => s.id === 'tiger_wild';
         
         const allSame = (s1.id === s2.id && s2.id === s3.id);
@@ -153,23 +165,38 @@ export default function FortuneTigerGame({ onBack }: FortuneTigerProps) {
       if (totalWin > 0) {
         setWinningLines(foundWins);
         await updateBalance(totalWin);
-        setMessage({ text: `${isBonusActive ? 'BIG WIN!' : 'GANHOU!'} R$ ${totalWin.toFixed(2)}`, color: '#FFD700' });
+        setMessage({ 
+          text: `${isBonusActive ? 'FORTUNE WIN!' : 'GANHOU!'} R$ ${totalWin.toFixed(2)}`, 
+          color: '#FFD700' 
+        });
         playTone(600, 0.5);
+        
+        // Clean up bonus state
         if (isBonusActive) {
           setIsBonusActive(false);
           setMultiplier(1);
+          setBonusAttempts(0);
         }
+        
+        // End lifecycle
+        setIsSpinning(false);
+        processingRef.current = false;
       } else if (isBonusActive) {
-        setMessage({ text: 'Roda da Sorte!', color: '#FFA500' });
-        // Auto respin until win if bonus active
-        respinTimeoutRef.current = setTimeout(() => handleSpin(true), 1200);
-        return; // Keep spinning
+        setBonusAttempts(prev => prev + 1);
+        setMessage({ text: 'Rodando a Sorte...', color: '#FFA500' });
+        
+        // Trigger next auto-spin
+        respinTimeoutRef.current = setTimeout(() => {
+          handleSpin(true);
+        }, 1000);
+      } else {
+        setIsSpinning(false);
+        processingRef.current = false;
       }
 
     } catch (err) {
-      console.error(err);
-      setMessage({ text: 'Erro na rodada', color: '#FF4444' });
-    } finally {
+      console.error('Spin Failure:', err);
+      setMessage({ text: 'Erro na conexão', color: '#FF4444' });
       setIsSpinning(false);
       processingRef.current = false;
     }

@@ -226,7 +226,7 @@ export default function NeonFruitBurstGame({ onBack }: NeonFruitBurstProps) {
       let roundMultiplier = isFreeSpin ? globalMultiplier : 1;
       let iters = 0;
 
-      while (hasWins && iters < 15) {
+      while (hasWins && iters < 10) {
         iters++;
         const clusters = findClusters(gridRef.current);
         if (clusters.length === 0) {
@@ -235,12 +235,14 @@ export default function NeonFruitBurstGame({ onBack }: NeonFruitBurstProps) {
         }
 
         // Explode
-        playTone(400 + roundMultiplier * 100, 0.2, 'square');
-        for (let i = 0; i < 10; i++) {
+        playTone(400 + Math.min(roundMultiplier, 10) * 50, 0.2, 'square');
+        for (let i = 0; i < 8; i++) {
           clusters.forEach(cl => {
             cl.cells.forEach(cell => {
-              gridRef.current[cell.r][cell.c].scale += 0.05;
-              gridRef.current[cell.r][cell.c].opacity -= 0.1;
+              if (gridRef.current[cell.r][cell.c]) {
+                gridRef.current[cell.r][cell.c].scale += 0.05;
+                gridRef.current[cell.r][cell.c].opacity -= 0.12;
+              }
             });
           });
           draw();
@@ -253,17 +255,23 @@ export default function NeonFruitBurstGame({ onBack }: NeonFruitBurstProps) {
           stepWin += calculatePayout(cl.symbolId, cl.cells.length) * currentBet * roundMultiplier;
         });
         totalRoundWin += stepWin;
-        setMessage({ text: `BURST! +R$ ${stepWin.toFixed(2)} (x${roundMultiplier})`, color: '#00ff66' });
+        if (stepWin > 0) {
+          setMessage({ text: `BURST! +R$ ${stepWin.toFixed(2)} (x${roundMultiplier})`, color: '#00ff66' });
+        }
 
         // Remove and Gravity
         for (let c = 0; c < COLS; c++) {
           let emptyIdx = ROWS - 1;
           for (let r = ROWS - 1; r >= 0; r--) {
-            if (!clusters.some(cl => cl.cells.some(cell => cell.r === r && cell.c === c))) {
-              const temp = gridRef.current[r][c];
-              gridRef.current[r][c] = null;
-              gridRef.current[emptyIdx][c] = { ...temp, yOffset: 0, opacity: 1, scale: 1 };
-              emptyIdx--;
+            // Check if (r,c) is in any cluster
+            const isInCluster = clusters.some(cl => cl.cells.some(cell => cell.r === r && cell.c === c));
+            if (!isInCluster) {
+              if (gridRef.current[r][c]) {
+                const temp = { ...gridRef.current[r][c] };
+                gridRef.current[r][c] = null;
+                gridRef.current[emptyIdx][c] = { ...temp, yOffset: 0, opacity: 1, scale: 1 };
+                emptyIdx--;
+              }
             } else {
               gridRef.current[r][c] = null;
             }
@@ -280,12 +288,12 @@ export default function NeonFruitBurstGame({ onBack }: NeonFruitBurstProps) {
         }
 
         // Drop down missing
-        for (let i = 0; i < 15; i++) {
-          gridRef.current.forEach(row => row.forEach(cell => {
+        for (let i = 0; i < 12; i++) {
+          gridRef.current.forEach(row => row && row.forEach(cell => {
             if (cell && cell.yOffset < 0) {
-              cell.yOffset += 15;
-              cell.opacity += 0.07;
-              cell.scale += 0.04;
+              cell.yOffset += 18;
+              cell.opacity = Math.min(1, cell.opacity + 0.1);
+              cell.scale = Math.min(1, cell.scale + 0.08);
             } else if (cell) {
               cell.yOffset = 0;
               cell.opacity = 1;
@@ -293,10 +301,10 @@ export default function NeonFruitBurstGame({ onBack }: NeonFruitBurstProps) {
             }
           }));
           draw();
-          await new Promise(r => setTimeout(r, isTurbo ? 5 : 20));
+          await new Promise(r => setTimeout(r, isTurbo ? 5 : 15));
         }
 
-        roundMultiplier *= 2; // Doubling multiplier
+        roundMultiplier *= 2; 
         if (isFreeSpin) setGlobalMultiplier(roundMultiplier);
       }
 
@@ -305,6 +313,8 @@ export default function NeonFruitBurstGame({ onBack }: NeonFruitBurstProps) {
         await updateBalance(totalRoundWin);
         playTone(600, 0.5);
         setMessage({ text: `VITORIA TOTAL: R$ ${totalRoundWin.toFixed(2)}`, color: '#ffff00' });
+      } else {
+        setMessage(null);
       }
 
     } catch (err) {
